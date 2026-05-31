@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import MonthlyEvolutionChart from './MonthlyEvolutionChart';
 
 interface AccountBalance {
   accountId: string;
@@ -11,7 +12,11 @@ interface AccountBalance {
   transactionCount: number;
 }
 
-export default function AccountBalances() {
+interface AccountBalancesProps {
+  onSelectAccount?: (accountId: string) => void;
+}
+
+export default function AccountBalances({ onSelectAccount }: AccountBalancesProps) {
   const [balances, setBalances] = useState<AccountBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +115,12 @@ export default function AccountBalances() {
             {balances.map((acc) => (
               <div
                 key={acc.accountId}
-                className="bg-slate-900/60 backdrop-blur-md border border-slate-900 hover:border-slate-800 p-6 rounded-3xl flex flex-col justify-between shadow-lg hover:shadow-indigo-500/5 hover:scale-[1.01] transition-all duration-300 group"
+                onClick={() => onSelectAccount?.(acc.accountId)}
+                className={`bg-slate-900/60 backdrop-blur-md border border-slate-900 p-6 rounded-3xl flex flex-col justify-between shadow-lg transition-all duration-300 group ${
+                  onSelectAccount 
+                    ? 'cursor-pointer hover:border-indigo-500/50 hover:shadow-indigo-500/5 hover:scale-[1.01] active:scale-[0.99]' 
+                    : ''
+                }`}
               >
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
@@ -149,6 +159,9 @@ export default function AccountBalances() {
               </div>
             ))}
           </div>
+
+          {/* Gráfico de Evolución Mensual */}
+          <MonthlyEvolutionChart />
 
           {/* Gran Total */}
           <div className="bg-gradient-to-r from-slate-900/80 to-indigo-950/20 border border-slate-900 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -3,9 +3,33 @@ import prisma from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const accountId = searchParams.get('accountId');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    const where: any = {};
+
+    if (accountId) {
+      where.accountId = accountId;
+    }
+
+    if (startDate || endDate) {
+      where.transactionDate = {};
+      if (startDate) {
+        where.transactionDate.gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.transactionDate.lte = end;
+      }
+    }
+
     const transactions = await prisma.transaction.findMany({
+      where,
       orderBy: { transactionDate: 'desc' },
-      take: 100,
+      take: 200, // Slightly increase threshold to show more entries under filters
       include: {
         account: true,
         category: true,
