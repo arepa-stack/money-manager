@@ -37,6 +37,8 @@ export default function Dashboard() {
   const [executeResult, setExecuteResult] = useState<ImportExecuteResult | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [hasLoadedDefaultTab, setHasLoadedDefaultTab] = useState(false);
+  const [isResolvingDefaultTab, setIsResolvingDefaultTab] = useState(true);
   
   // Filtering states
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -62,9 +64,25 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setAccounts(data.map((a: any) => ({ id: a.accountId, name: a.accountName })));
+        
+        // Auto-switch default active tab on initial mount
+        setHasLoadedDefaultTab((loaded) => {
+          if (!loaded) {
+            if (data.length > 0) {
+              setCurrentTab('transactions');
+            } else {
+              setCurrentTab('import');
+            }
+          }
+          return true;
+        });
+        setIsResolvingDefaultTab(false);
+      } else {
+        setIsResolvingDefaultTab(false);
       }
     } catch (err) {
       console.error('Error al cargar cuentas:', err);
+      setIsResolvingDefaultTab(false);
     }
   };
 
@@ -154,6 +172,32 @@ export default function Dashboard() {
     setEndDate(getLocalDateString(lastDay));
   };
 
+  const handleClearDatabase = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas borrar por completo la base de datos local? Se eliminarán todas las transacciones, cuentas y categorías. Esta acción no se puede deshacer.')) {
+      return;
+    }
+    
+    setIsLoadingTxs(true);
+    try {
+      const res = await fetch('/api/db/clear', { method: 'POST' });
+      if (res.ok) {
+        alert('Base de datos limpiada con éxito.');
+        handleClearFilters();
+        fetchTransactions();
+        fetchAccountsList();
+        handleReset();
+        setCurrentTab('import'); // Regresar a pestaña importador al vaciar base de datos
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Error al intentar limpiar la base de datos.');
+      }
+    } catch (err: any) {
+      setError('Error de red al intentar limpiar la base de datos: ' + err.message);
+    } finally {
+      setIsLoadingTxs(false);
+    }
+  };
+
   // Aggregated Stats from loaded (filtered) transactions
   const totalBalanceUsd = transactions.reduce((acc, t) => {
     if (t.transactionType === 'INCOME') return acc + t.baseAmountUsd;
@@ -168,6 +212,17 @@ export default function Dashboard() {
   const totalExpenseUsd = transactions
     .filter(t => t.transactionType === 'EXPENSE')
     .reduce((acc, t) => acc + t.baseAmountUsd, 0);
+
+  if (isResolvingDefaultTab) {
+    return (
+      <main className="min-h-screen bg-slate-955 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-slate-900 text-slate-100 font-sans flex flex-col items-center justify-center space-y-4">
+        <div className="relative flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+        </div>
+        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">Cargando...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-955 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-slate-900 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white pb-16">
@@ -188,11 +243,24 @@ export default function Dashboard() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
-              Base Local: SQLite
-            </span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleClearDatabase}
+              className="text-xs font-semibold text-rose-450 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/25 hover:border-rose-500/40 px-3.5 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              title="Borrar todos los datos de SQLite"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+              Limpiar Base de Datos
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                Base Local: SQLite
+              </span>
+            </div>
           </div>
         </header>
 
@@ -473,7 +541,7 @@ export default function Dashboard() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-900/40 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-900">
-                          <th className="px-6 py-4">Fecha</th>
+                          <th className="px-6 py-4">Hora</th>
                           <th className="px-6 py-4">Cuenta</th>
                           <th className="px-6 py-4">Categoría / Sub</th>
                           <th className="px-6 py-4">Importe Original</th>
@@ -482,38 +550,83 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-900 text-sm text-slate-300">
-                        {transactions.map((t) => (
-                          <tr key={t.id} className="hover:bg-slate-900/20 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-400">
-                              {new Date(t.transactionDate).toLocaleDateString()} {new Date(t.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                            <td className="px-6 py-4 font-semibold text-slate-200 whitespace-nowrap">{t.account.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-slate-200">{t.category.name}</span>
-                              {t.subcategory && (
-                                <span className="text-xs text-slate-500 block">&gt; {t.subcategory.name}</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`font-semibold ${
-                                t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-100'
-                              }`}>
-                                {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
-                                {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                              <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200">
-                              ${t.baseAmountUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="px-6 py-4 text-slate-400 max-w-xs truncate" title={t.note || t.description || ''}>
-                              <span>{t.note || '-'}</span>
-                              {t.description && (
-                                <span className="text-xs text-slate-500 block italic">{t.description}</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                        {(() => {
+                          // Group transactions by local date key (YYYY-MM-DD)
+                          const grouped: { [key: string]: Transaction[] } = {};
+                          transactions.forEach((t) => {
+                            const date = new Date(t.transactionDate);
+                            const key = getLocalDateString(date);
+                            if (!grouped[key]) grouped[key] = [];
+                            grouped[key].push(t);
+                          });
+
+                          // Sort keys in descending order
+                          const sortedKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+                          return sortedKeys.map((dateKey) => {
+                            const [year, month, day] = dateKey.split('-').map(Number);
+                            const date = new Date(year, month - 1, day);
+                            const formattedDate = date.toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            });
+                            const weekday = date.toLocaleDateString('es-ES', { weekday: 'long' });
+                            const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+                            return (
+                              <React.Fragment key={dateKey}>
+                                {/* Day Header Group row */}
+                                <tr className="bg-slate-900/35 border-b border-slate-900 select-none">
+                                  <td colSpan={6} className="px-6 py-3.5">
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-extrabold text-slate-200 tracking-tight text-sm">
+                                        {formattedDate}
+                                      </span>
+                                      <span className="text-[10px] font-extrabold uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2.5 py-0.5 rounded-full">
+                                        {capitalizedWeekday}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+
+                                {/* Child rows */}
+                                {grouped[dateKey].map((t) => (
+                                  <tr key={t.id} className="hover:bg-slate-900/15 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-medium">
+                                      {new Date(t.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </td>
+                                    <td className="px-6 py-4 font-semibold text-slate-200 whitespace-nowrap">{t.account.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <span className="text-slate-200">{t.category.name}</span>
+                                      {t.subcategory && (
+                                        <span className="text-xs text-slate-500 block">&gt; {t.subcategory.name}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <span className={`font-semibold ${
+                                        t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-100'
+                                      }`}>
+                                        {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
+                                        {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      </span>
+                                      <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200">
+                                      ${t.baseAmountUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-400 max-w-xs truncate" title={t.note || t.description || ''}>
+                                      <span>{t.note || '-'}</span>
+                                      {t.description && (
+                                        <span className="text-xs text-slate-500 block italic">{t.description}</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
                       </tbody>
                     </table>
                   </div>
