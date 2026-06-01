@@ -1,6 +1,6 @@
 # Money Manager Import Engine — Documentación Completa del Sistema
 
-> **Versión**: 1.0 | **Fecha**: Junio 2026 | **Entorno**: Local / Desktop App-like (sin backend en la nube)
+> **Versión**: 1.1 | **Fecha**: Junio 2026 | **Entorno**: Local / Desktop App-like (sin backend en la nube)
 
 ---
 
@@ -188,7 +188,8 @@ Representa una cuenta financiera del usuario (bancaria, wallet, efectivo, etc.).
 | id | String UUID | PK | Identificador único |
 | name | String | UNIQUE | Nombre de la cuenta (ej: "Banesco Panamá", "Binance", "Cash") |
 | createdAt | DateTime | Default NOW | Fecha de creación del registro |
-| transactions | Transaction[] | Relación | Transacciones asociadas |
+| transactions | Transaction[] | Relación | Transacciones salientes o transferencias de origen asociadas |
+| receivedTransfers | Transaction[] | Relación | Transferencias entrantes asociadas (cuando la cuenta es destino) |
 
 #### Entidad Category (tabla: categories)
 
@@ -218,28 +219,46 @@ Subclasificación dentro de una categoría padre.
 
 #### Entidad Transaction (tabla: transactions)
 
-Registro central de un movimiento financiero.
+Registro central de un movimiento financiero. Los montos se guardan escalados a centavos (enteros) para evitar pérdida de precisión con tipos flotantes (Patrón "Money").
 
 | Campo | Tipo | Restricción | Descripción |
 |---|---|---|---|
 | id | String UUID | PK | Identificador único |
 | importHash | String | UNIQUE | Hash SHA-256 de deduplicación |
 | transactionDate | DateTime | — | Fecha y hora del movimiento |
-| accountId | String FK | NOT NULL | Cuenta bancaria |
+| accountId | String FK | NOT NULL | Cuenta origen del movimiento o de origen de transferencia |
 | categoryId | String FK | NOT NULL | Categoría del movimiento |
 | subcategoryId | String? FK | NULLABLE | Subcategoría (opcional) |
 | transactionType | String | — | INCOME, EXPENSE, o TRANSFER |
-| amount | Float | — | Monto en la moneda original (siempre positivo) |
+| amount | Int | — | Monto en la moneda original en centavos (siempre positivo) |
 | currency | String | — | Código ISO de moneda (USD, VES, BTC, etc.) |
-| baseAmountUsd | Float | — | Equivalente en dólares americanos |
+| baseAmountUsd | Int | — | Equivalente en centavos de USD base |
 | note | String? | NULLABLE | Nota libre del usuario |
 | description | String? | NULLABLE | Descripción adicional (campo del Excel) |
 | createdAt | DateTime | Default NOW | Fecha de inserción en BD |
+| destinationAccountId | String? FK | NULLABLE | Cuenta destino (solo para transferencias interbancarias) |
+| isOpeningBalance | Boolean | Default false | Indica si la transacción es un ajuste manual de saldo inicial / conciliación |
+
+#### Tabla Raw SQLite: exchange_rates
+
+Creada directamente en tiempo de ejecución para almacenamiento y caché de tasas de cambio (DolarAPI / BCV).
+
+| Campo | Tipo | Restricción | Descripción |
+|---|---|---|---|
+| id | TEXT | PK | Identificador único |
+| rate_date | TEXT | NOT NULL | Fecha oficial de la tasa de cambio |
+| fetched_at | INTEGER | NOT NULL | Timestamp en milisegundos de la consulta |
+| usd_oficial | REAL | NOT NULL | Tasa oficial del Dólar BCV |
+| usd_paralelo | REAL | NULLABLE | Tasa paralela del Dólar |
+| eur_oficial | REAL | NOT NULL | Tasa oficial del Euro |
+| eur_paralelo | REAL | NULLABLE | Tasa paralela del Euro |
+| source | TEXT | NOT NULL | Fuente de consulta (dolarapi, bcv, etc.) |
 
 ### Diagrama de Relaciones
 
 ```
-Account (1) ──────── (*) Transaction
+Account (1) ──────── (*) Transaction (Origen / Salida)
+Account (0..1) ────── (*) Transaction (Destino / Entrada, solo TRANSFER)
 Category (1) ─────── (*) Transaction
 Category (1) ─────── (*) Subcategory
 Subcategory (0..1) ── (*) Transaction
@@ -248,7 +267,7 @@ Subcategory (0..1) ── (*) Transaction
 ### Reglas de Integridad Referencial
 
 - Al borrar una Category, sus Subcategory asociadas se eliminan en cascada (onDelete: Cascade).
-- Para borrar la BD completa, se debe respetar el orden: Transaction → Subcategory → Category → Account.
+- Para borrar la BD completa, se debe respetar el orden: Transaction → Subcategory → Category → Account. (Nota: la tabla `exchange_rates` no tiene claves foráneas y se puede truncar por separado).
 
 ---
 
@@ -353,48 +372,44 @@ Proceso (ExecuteImportUseCase) dentro de prisma.$transaction():
 Endpoint: GET /api/transactions
 
 Filtros soportados por query string:
-- accountId: UUID — filtrar por cuenta específica
-- startDate: YYYY-MM-DD — fecha desde (incluyente, hora 00:00:00)
-- endDate: YYYY-MM-DD — fecha hasta (incluyente, hora 23:59:59.999)
+- `accountId`: UUID — filtrar por cuenta específica.
+- `startDate`: YYYY-MM-DD — fecha desde.
+- `endDate`: YYYY-MM-DD — fecha hasta.
+- `timezoneOffset`: String — Desfase de zona horaria del cliente en minutos (ej: `240` para UTC-4). Se utiliza para ajustar el rango de fechas en UTC y alinearlo a la perspectiva del calendario local del usuario (ej: de `startDateT00:00:00.000Z` + offset a `endDateT23:59:59.999Z` + offset).
+- `search`: String — Búsqueda por texto libre en el campo `note` (notas). **IMPORTANTE**: Cuando el parámetro `search` está activo, se omiten por completo los filtros de cuenta, fecha y límites temporales (Búsqueda Global).
 
-Respuesta: Array de hasta 200 transacciones ordenadas por transactionDate DESC, con relaciones account, category, subcategory expandidas.
-
-El límite de 200 registros es una decisión de rendimiento. El filtrado por fecha y cuenta reduce el conjunto lo suficiente para uso normal.
+Respuesta: Array de hasta 200 transacciones ordenadas por `transactionDate` DESC, con relaciones `account`, `category`, `subcategory` y `destinationAccount` expandidas.
 
 ### 8.2 Balances por Cuenta
 
 Endpoint: GET /api/accounts/balances
 
 Lógica de cálculo (todas las transacciones de la cuenta, sin filtro de fecha):
-- INCOME: suma al balance y a totalIncome
-- EXPENSE: resta del balance y suma a totalExpense
-- TRANSFER: resta del balance (tratado como salida neta) y suma a totalExpense
+- INCOME: suma al balance y a `totalIncome`.
+- EXPENSE: resta del balance y suma a `totalExpense`.
+- TRANSFER: resta del balance en la cuenta origen (salida) y se suma al balance en la cuenta destino si es una transferencia interna (`destinationAccountId` coincide con la cuenta destino). En el cómputo individual, las transferencias salientes restan del balance y las transferencias entrantes lo aumentan.
 
-Nota sobre transferencias: Una transferencia entre dos cuentas propias registradas en Money Manager aparecerá como deducción en la cuenta origen. Si ambas cuentas están en el sistema, el efecto neto a nivel patrimonio global es neutro.
-
-Respuesta por cuenta: { accountId, accountName, balance, totalIncome, totalExpense, transactionCount }
+Respuesta por cuenta: `{ accountId, accountName, balance, totalIncome, totalExpense, transactionCount }` (los montos se devuelven en USD con la conversión decimal aplicada al dividir el entero por 100).
 
 ### 8.3 Evolución Patrimonial Mensual
 
 Endpoint: GET /api/reports/evolution
 
+Filtros soportados por query string:
+- `timezoneOffset`: String — Desfase de zona horaria del cliente en minutos para agrupar transacciones según su fecha local en lugar de la UTC absoluta.
+
 Lógica de cálculo (opera sobre TODAS las transacciones en la BD):
 
-1. Agrupar cambios netos por mes (YYYY-MM):
+1. Ajustar cada fecha de transacción aplicando el `timezoneOffset` y agrupar cambios netos por mes (`YYYY-MM`).
+2. Sumar o restar el cambio neto:
    - INCOME: +baseAmountUsd
    - EXPENSE: -baseAmountUsd
-   - TRANSFER: 0 (neutro a nivel patrimonial global)
+   - TRANSFER: 0 (las transferencias internas se anulan a nivel patrimonial consolidado).
+3. Determinar el rango temporal desde el mes más antiguo con movimientos hasta el más reciente.
+4. Rellenar meses sin movimientos heredando el balance acumulado anterior.
+5. Calcular saldo acumulativo (running total): `balance[mes_N] = balance[mes_N-1] + cambioNeto[mes_N]`.
 
-2. Determinar rango temporal: desde el mes más antiguo hasta el más reciente.
-
-3. Rellenar meses sin movimientos: Si un mes no tuvo transacciones, su cambio neto es 0, pero el balance acumulado continúa desde el mes anterior.
-
-4. Calcular saldo acumulativo (running total):
-   balance[mes_N] = balance[mes_N-1] + cambioNeto[mes_N]
-
-Respuesta: Array cronológico de objetos { month: "YYYY-MM", balance: 12345.67 }.
-
-Los balances son siempre en USD (baseAmountUsd), que es la moneda base del sistema para permitir comparaciones cross-currency.
+Respuesta: Array cronológico de objetos `{ month: "YYYY-MM", balance: 12345.67 }`.
 
 ---
 
@@ -436,19 +451,30 @@ Reglas de validación:
 |---|---|---|
 | POST | /api/import/analyze | Analiza un archivo Excel y devuelve preview (no escribe en BD) |
 | POST | /api/import/commit | Ejecuta la importación transaccional del archivo |
-| GET | /api/transactions | Lista transacciones con filtros opcionales |
+| GET | /api/transactions | Lista transacciones con filtros opcionales (soporta parámetro `search` global y `timezoneOffset`) |
+| GET | /api/transactions/notes | Obtiene la lista de notas únicas registradas para autocompletado |
+| GET | /api/bcv/rates | Obtiene las tasas USD/EUR (oficial y paralelo) con historial y caché de 1h |
 | GET | /api/accounts/balances | Balances actuales por cuenta |
+| POST | /api/accounts/reconcile | Concilia y ajusta manualmente el saldo inicial de una cuenta |
 | GET | /api/reports/evolution | Evolución patrimonial mensual acumulada |
 | GET | /api/categories | Lista categorías con subcategorías |
 | PUT | /api/categories/:id | Renombra una categoría |
 | PUT | /api/subcategories/:id | Renombra una subcategoría |
 | POST | /api/db/clear | Borra toda la base de datos |
 
-### Tipos de Respuesta
+### Estructura de Payloads y Tipos de Respuesta
 
-**ImportAnalysisResult**: { totalRows, totalParsed, totalSkippedDuplicates, newAccounts[], newCategories[], newSubcategories[], previewTransactions[] }
+**ImportAnalysisResult**: `{ totalRows, totalParsed, totalSkippedDuplicates, newAccounts[], newCategories[], newSubcategories[], previewTransactions[] }`
 
-**ImportExecuteResult**: { totalParsed, totalInserted, totalSkipped, newAccountsCreatedCount, newCategoriesCreatedCount, newSubcategoriesCreatedCount }
+**ImportExecuteResult**: `{ totalParsed, totalInserted, totalSkipped, newAccountsCreatedCount, newCategoriesCreatedCount, newSubcategoriesCreatedCount }`
+
+**ReconcileRequest (POST /api/accounts/reconcile)**:
+- Payload: `{ accountId: string, targetBalance: number, clientDate?: string }`
+  - `accountId`: UUID de la cuenta a conciliar.
+  - `targetBalance`: Balance objetivo en dólares (USD), expresado como un número decimal (float, ej: `15.50`). En la base de datos se almacena escalado a centavos como número entero para evitar pérdidas de precisión matemática.
+  - `clientDate`: String de fecha local del cliente.
+- Respuesta: `{ message: string, created: boolean, transaction?: Transaction }`
+  - `created`: `true` si se creó o actualizó la transacción de ajuste, `false` si se eliminó un ajuste anterior porque la cuenta ya estaba conciliada.
 
 ---
 
@@ -512,6 +538,36 @@ Componente de gestión de catálogo con las siguientes funcionalidades:
 - Edición inline: hover muestra el ícono de lápiz. Al clickear abre un input en el lugar del texto con botones Guardar/Cancelar. Soporta Enter para guardar y Escape para cancelar.
 - Actualización optimista: el estado local se actualiza inmediatamente al guardar, sin recargar toda la lista.
 - Manejo de errores: muestra mensaje de error debajo del campo si hay conflicto de nombre.
+
+### 11.8 BcvRates
+
+Muestra las tasas cambiarias vigentes en la UI en un grid responsivo:
+- Tarjetas informativas de glassmorphism para Dólar Oficial, Dólar Paralelo, Euro Oficial y Euro Paralelo.
+- Badges de variación porcentual dinámicos que se animan con efectos de pulso.
+- Tabla de registros históricos consultados anteriormente en SQLite.
+- Botón interactivo para forzar la actualización de tasas en tiempo real.
+
+### 11.9 QuickConverter
+
+Calculadora interactiva de conversión bidireccional integrada dentro del módulo de tasas:
+- Selectores personalizados para moneda origen y destino (`Bs.`, `USD (Oficial/Paralelo)`, `EUR (Oficial/Paralelo)`).
+- Campos numéricos con deshabilitación de spinners del navegador.
+- Botones chevron personalizados para incremento/decremento que adaptan su magnitud según la divisa (+/- 1 para divisas extranjeras, +/- 10 para bolívares).
+- Botón rápido para invertir las divisas seleccionadas.
+
+### 11.10 CategoryDistribution
+
+Panel analítico en el historial de transacciones que resume los egresos del usuario:
+- Gráfico circular Donut dibujado en SVG nativo interactivo con el monto total en el centro.
+- Leyenda interactiva con colores y barras de progreso proporcionales de participación de cada categoría.
+- Se adapta instantáneamente a filtros dinámicos (fechas y cuentas) al procesar la información directamente en el cliente.
+
+### 11.11 Estilos Globales y Scrollbars Personalizados (globals.css)
+
+Para mantener una coherencia visual premium e inmersiva con el tema oscuro (`slate-950`):
+- Se implementaron selectores de scrollbars personalizados para navegadores basados en Webkit (`::-webkit-scrollbar`, `::-webkit-scrollbar-thumb`, etc.) y Firefox (`scrollbar-width: thin`).
+- Las barras de desplazamiento tienen un ancho delgado de 6px, con un canal transparente para evitar interrupciones visuales en los bordes.
+- El control de desplazamiento (thumb) usa un color neutro `slate-700` (`#334155`) y se ilumina a `indigo-600` (`#4f46e5`) al pasar el cursor (hover), logrando micro-interacciones sutiles en las tablas e inputs con desbordamiento.
 
 ---
 
@@ -718,10 +774,12 @@ copy prisma\dev.db prisma\dev.db.backup
 4. Filtro por categoría en el historial.
 5. Gráfico de evolución por cuenta individual.
 6. Exportación a CSV/Excel del historial filtrado.
-7. Estadísticas de categorías: distribución de gastos (pie chart SVG).
-8. Presupuestos por categoría: comparar gasto real vs presupuesto mensual.
-9. Integración con API de tipos de cambio para calcular baseAmountUsd automáticamente para monedas no-USD.
-10. Dark/Light mode toggle (actualmente solo dark mode).
+7. **[Implementado V1.1]** Estadísticas de categorías: distribución de gastos (Donut chart SVG).
+8. **[Descartado]** Presupuestos por categoría: comparar gasto real vs presupuesto mensual (no de interés para el usuario).
+9. **[Implementado V1.1]** Integración con API de tasas de cambio de referencia (DolarAPI y BCV fallback) para uso en conversiones.
+10. **[Implementado V1.1]** Buscador global por texto libre en notas con autocompletado y debounce.
+11. Dark/Light mode toggle (actualmente solo dark mode).
+12. **[Implementado V1.1]** Conciliación y Ajustes de Saldos Iniciales por cuenta (para solucionar discrepancias de saldo objetivo).
 
 ---
 
