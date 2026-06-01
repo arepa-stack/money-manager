@@ -5,6 +5,7 @@ import ImportWidget from '@/components/ImportWidget';
 import ImportPreview from '@/components/ImportPreview';
 import AccountBalances from '@/components/AccountBalances';
 import DateRangePicker from '@/components/DateRangePicker';
+import CategoryManager from '@/components/CategoryManager';
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
 
 interface Transaction {
@@ -30,7 +31,7 @@ const getLocalDateString = (date: Date) => {
 };
 
 export default function Dashboard() {
-  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances'>('import');
+  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories'>('import');
   const [importState, setImportState] = useState<'upload' | 'preview' | 'success'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ImportAnalysisResult | null>(null);
@@ -313,6 +314,17 @@ export default function Dashboard() {
           >
             Saldos y Evolución
             {currentTab === 'balances' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
+            )}
+          </button>
+          <button
+            onClick={() => setCurrentTab('categories')}
+            className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
+              currentTab === 'categories' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Categorías
+            {currentTab === 'categories' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
             )}
           </button>
@@ -642,6 +654,12 @@ export default function Dashboard() {
               setSelectedAccountId(accId);
               setCurrentTab('transactions');
             }} />
+          </div>
+        )}
+
+        {currentTab === 'categories' && (
+          <div className="animate-fade-in">
+            <CategoryManager />
           </div>
         )}
       </div>
