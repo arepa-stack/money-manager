@@ -189,11 +189,11 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
       </div>
 
       {/* Botones de Acción */}
-      <div className="flex justify-between items-center pt-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-4 gap-4">
         <button
           onClick={onCancel}
           disabled={isCommitting}
-          className="px-6 py-3 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors font-medium cursor-pointer disabled:opacity-50"
+          className="px-6 py-3 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors font-medium cursor-pointer disabled:opacity-50 w-full sm:w-auto text-center justify-center"
         >
           Cancelar y Volver
         </button>
@@ -201,7 +201,7 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
         <button
           onClick={handleConfirm}
           disabled={isCommitting}
-          className="px-8 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-colors cursor-pointer flex items-center gap-2 shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+          className="px-8 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 disabled:opacity-50 w-full sm:w-auto"
         >
           {isCommitting ? (
             <>

@@ -348,7 +348,7 @@ export default function CategoryManager() {
               Edita el nombre de categorías y subcategorías. Los cambios se reflejan en todo el historial automáticamente gracias a las relaciones por ID.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-semibold text-slate-400 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
               {totalCategories} categorías · {totalSubcategories} subcategorías
             </span>

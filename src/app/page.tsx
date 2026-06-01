@@ -284,7 +284,7 @@ export default function Dashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-955 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-slate-900 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white pb-16">
+    <main className="min-h-screen overflow-x-hidden relative bg-slate-955 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-slate-900 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white pb-16">
       {/* Background decoration elements */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none"></div>
@@ -301,8 +301,7 @@ export default function Dashboard() {
               Consolida, mapea y analiza tus registros financieros mediante SQLite.
             </p>
           </div>
-          
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <button
               onClick={handleClearDatabase}
               className="text-xs font-semibold text-rose-450 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/25 hover:border-rose-500/40 px-3.5 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
@@ -341,7 +340,7 @@ export default function Dashboard() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-900 gap-6">
+        <div className="flex border-b border-slate-900 gap-6 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
           <button
             onClick={() => setCurrentTab('import')}
             className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
@@ -539,7 +538,7 @@ export default function Dashboard() {
             {/* Quick Stats Panel (Filtered summary) */}
             {transactions.length > 0 && (
               <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-slate-900/40 border border-slate-900 p-6 rounded-3xl backdrop-blur-sm shadow-md">
+                <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
                   <p className="text-sm font-medium text-slate-400">Balance del Período</p>
                   <p className={`text-3xl font-extrabold mt-2 ${totalBalanceUsd >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {totalBalanceUsd >= 0 ? '+' : ''}${formatCents(totalBalanceUsd)}
@@ -547,7 +546,7 @@ export default function Dashboard() {
                   <span className="text-[10px] text-slate-500 mt-2 block">Sumatoria neta filtrada en USD</span>
                 </div>
 
-                <div className="bg-slate-900/40 border border-slate-900 p-6 rounded-3xl backdrop-blur-sm shadow-md">
+                <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
                   <p className="text-sm font-medium text-emerald-400">Ingresos del Período</p>
                   <p className="text-3xl font-extrabold text-emerald-300 mt-2">
                     ${formatCents(totalIncomeUsd)}
@@ -555,7 +554,7 @@ export default function Dashboard() {
                   <span className="text-[10px] text-slate-500 mt-2 block">Ingresos en rango</span>
                 </div>
 
-                <div className="bg-slate-900/40 border border-slate-900 p-6 rounded-3xl backdrop-blur-sm shadow-md">
+                <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
                   <p className="text-sm font-medium text-rose-400">Gastos del Período</p>
                   <p className="text-3xl font-extrabold text-rose-300 mt-2">
                     -${formatCents(totalExpenseUsd)}
@@ -569,7 +568,7 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-xl font-bold text-slate-200">Resultados del Historial (SQLite)</h2>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
                   {/* Toggle Vista */}
                   <div className="bg-slate-950 border border-slate-850 p-1 rounded-xl flex items-center gap-1">
                     <button

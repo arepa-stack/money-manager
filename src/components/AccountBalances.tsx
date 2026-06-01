@@ -83,7 +83,7 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
     <div className="w-full max-w-4xl mx-auto space-y-6">
       
       {/* Header local con Refresh */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-200">Resumen Financiero por Cuenta</h2>
           <p className="text-xs text-slate-500 mt-0.5">Saldos agregados acumulados en dólares (USD)</p>
@@ -115,7 +115,7 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
 
       {/* Grid de Cuentas */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((n) => (
             <div key={n} className="bg-slate-900/30 border border-slate-900 p-6 rounded-3xl space-y-4 animate-pulse">
               <div className="h-4 bg-slate-800 rounded-md w-1/3"></div>
@@ -144,7 +144,7 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
       ) : (
         <div className="space-y-8">
           {/* Card Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {balances.map((acc) => (
               <div
                 key={acc.accountId}

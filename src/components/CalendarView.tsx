@@ -252,7 +252,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
       </div>
 
       {/* Week Days Header */}
-      <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
+      <div className="grid grid-cols-7 gap-1 md:gap-2 text-center text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-500">
         <div>Dom</div>
         <div>Lun</div>
         <div>Mar</div>
@@ -263,7 +263,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
       </div>
 
       {/* Grid of Days */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1 md:gap-2">
         {cells.map((cell) => {
           const totals = dailyTotals[cell.dateStr];
           const isDateInRange = cell.dateStr >= startDate && cell.dateStr <= endDate;
@@ -278,7 +278,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
             <div
               key={cell.dateStr}
               onClick={isInteractive ? () => setSelectedDate(cell.dateStr) : undefined}
-              className={`min-h-[110px] p-2 rounded-2xl border flex flex-col justify-between transition-all relative ${
+              className={`min-h-[65px] md:min-h-[110px] p-1.5 md:p-2 rounded-xl md:rounded-2xl border flex flex-col justify-between transition-all relative ${
                 !cell.isCurrentMonth
                   ? 'bg-slate-950/20 border-slate-950/40 text-slate-600 opacity-40'
                   : 'bg-slate-950/40 border-slate-900 text-slate-300'
@@ -309,14 +309,14 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
                 </span>
                 
                 {totals && totals.txCount > 0 && isDateInRange && (
-                  <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-850 px-1.5 py-0.2 rounded-full">
-                    {totals.txCount} {totals.txCount === 1 ? 'mov' : 'movs'}
+                  <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-850 px-1 md:px-1.5 py-0.2 rounded-full">
+                    {totals.txCount}<span className="hidden sm:inline"> {totals.txCount === 1 ? 'mov' : 'movs'}</span>
                   </span>
                 )}
               </div>
 
-              {/* Totals inside cell */}
-              <div className="space-y-1 mt-2 text-[10px] font-semibold">
+              {/* Totals inside cell (Desktop) */}
+              <div className="hidden md:block space-y-1 mt-2 text-[10px] font-semibold">
                 {isDateInRange && totals ? (
                   <>
                     {totals.income > 0 && (
@@ -336,6 +336,23 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
                         <span>Transf</span>
                         <span>↔ ${formatCents(totals.transfer)}</span>
                       </div>
+                    )}
+                  </>
+                ) : null}
+              </div>
+
+              {/* Totals inside cell (Mobile Dots) */}
+              <div className="md:hidden flex gap-1 justify-center mt-1.5">
+                {isDateInRange && totals ? (
+                  <>
+                    {totals.income > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title={`Ingreso: +$${formatCents(totals.income)}`} />
+                    )}
+                    {totals.expense > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400" title={`Gasto: -$${formatCents(totals.expense)}`} />
+                    )}
+                    {totals.transfer > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" title={`Transferencia: ↔ $${formatCents(totals.transfer)}`} />
                     )}
                   </>
                 ) : null}
