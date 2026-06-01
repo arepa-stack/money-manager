@@ -156,24 +156,27 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
                 }`}
               >
                 <div className="space-y-4">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-slate-300 text-lg group-hover:text-indigo-400 transition-colors">
+                  <div className="flex justify-between items-start gap-3">
+                    <h3 className="font-bold text-slate-300 text-lg group-hover:text-indigo-400 transition-colors line-clamp-2">
                       {acc.accountName}
                     </h3>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-[9px] uppercase font-bold text-slate-500 bg-slate-800/40 border border-slate-850 px-1.5 py-0.5 rounded">
+                        Cuenta
+                      </span>
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           setReconcileAccountId(acc.accountId);
                           setReconcileTarget((acc.balance / 100).toFixed(2));
                         }}
-                        className="text-[10px] uppercase font-bold text-slate-400 hover:text-indigo-300 bg-slate-800/40 hover:bg-slate-800 border border-slate-850 px-2 py-0.5 rounded transition-all cursor-pointer"
+                        className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 px-2 py-1 rounded-md transition-all cursor-pointer shadow-sm shadow-indigo-500/10 flex items-center gap-1"
                       >
-                        Conciliar
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                          <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+                        </svg>
+                        Ajustar
                       </button>
-                      <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-800/40 border border-slate-850 px-2 py-0.5 rounded">
-                        Cuenta
-                      </span>
                     </div>
                   </div>
                   

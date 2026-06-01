@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ImportWidget from '@/components/ImportWidget';
 import ImportPreview from '@/components/ImportPreview';
 import AccountBalances from '@/components/AccountBalances';
@@ -8,6 +8,9 @@ import DateRangePicker from '@/components/DateRangePicker';
 import CategoryManager from '@/components/CategoryManager';
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
 import { formatCents } from '@/lib/moneyUtils';
+import CalendarView from '@/components/CalendarView';
+import EditTransactionModal from '@/components/EditTransactionModal';
+import TransactionTable from '@/components/TransactionTable';
 
 interface Transaction {
   id: string;
@@ -18,6 +21,10 @@ interface Transaction {
   transactionType: string;
   note: string | null;
   description: string | null;
+  accountId: string;
+  categoryId: string;
+  subcategoryId: string | null;
+  destinationAccountId: string | null;
   account: { name: string };
   category: { name: string };
   subcategory: { name: string } | null;
@@ -49,6 +56,49 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState<string>('');
   const [isLoadingTxs, setIsLoadingTxs] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  const [visibleColumns, setVisibleColumns] = useState({
+    time: true,
+    account: true,
+    category: true,
+    amount: true,
+    usdAmount: true,
+    note: true
+  });
+  const [isColDropdownOpen, setIsColDropdownOpen] = useState(false);
+  const colDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load columns preference on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('money_manager_visible_columns');
+    if (saved) {
+      try {
+        setVisibleColumns(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error loading visible columns:', e);
+      }
+    }
+  }, []);
+
+  // Click outside listener for column selector dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (colDropdownRef.current && !colDropdownRef.current.contains(event.target as Node)) {
+        setIsColDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleColumn = (col: keyof typeof visibleColumns) => {
+    const updated = { ...visibleColumns, [col]: !visibleColumns[col] };
+    setVisibleColumns(updated);
+    localStorage.setItem('money_manager_visible_columns', JSON.stringify(updated));
+  };
+
 
   // Initialize dates to current month, load accounts
   useEffect(() => {
@@ -175,7 +225,13 @@ export default function Dashboard() {
     setEndDate(getLocalDateString(lastDay));
   };
 
+  const handleEditSuccess = () => {
+    fetchTransactions();
+    fetchAccountsList();
+  };
+
   const handleClearDatabase = async () => {
+
     if (!window.confirm('¿Estás seguro de que deseas borrar por completo la base de datos local? Se eliminarán todas las transacciones, cuentas y categorías. Esta acción no se puede deshacer.')) {
       return;
     }
@@ -511,145 +567,129 @@ export default function Dashboard() {
 
             {/* Transactions List */}
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-xl font-bold text-slate-200">Resultados del Historial (SQLite)</h2>
-                <button 
-                  onClick={fetchTransactions}
-                  className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-900 hover:border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                  Refrescar
-                </button>
-              </div>
-
-              <div className="bg-slate-900/20 border border-slate-900 rounded-3xl overflow-hidden backdrop-blur-sm">
-                {isLoadingTxs ? (
-                  <div className="py-20 flex flex-col items-center justify-center space-y-3">
-                    <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-slate-500 text-sm">Cargando transacciones...</p>
-                  </div>
-                ) : transactions.length === 0 ? (
-                  <div className="py-16 px-6 flex flex-col items-center justify-center text-center space-y-4 max-w-md mx-auto">
-                    <div className="p-4 bg-slate-900 border border-slate-800 text-indigo-400/80 rounded-full shadow-inner animate-pulse">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                      </svg>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-bold text-slate-200 text-md">No se encontraron movimientos</h3>
-                      <p className="text-slate-500 text-sm mt-1">
-                        No hay transacciones guardadas en SQLite que coincidan con los filtros seleccionados.
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  {/* Toggle Vista */}
+                  <div className="bg-slate-950 border border-slate-850 p-1 rounded-xl flex items-center gap-1">
                     <button
-                      onClick={handleClearFilters}
-                      className="px-4 py-2 text-xs font-semibold text-indigo-400 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-xl transition-all cursor-pointer"
+                      onClick={() => setViewMode('list')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+                        viewMode === 'list' 
+                          ? 'bg-indigo-650 text-white shadow-md' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
                     >
-                      Limpiar Filtros
+                      Lista
+                    </button>
+                    <button
+                      onClick={() => setViewMode('calendar')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+                        viewMode === 'calendar' 
+                          ? 'bg-indigo-650 text-white shadow-md' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Calendario
                     </button>
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-900/40 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-900">
-                          <th className="px-6 py-4">Hora</th>
-                          <th className="px-6 py-4">Cuenta</th>
-                          <th className="px-6 py-4">Categoría / Sub</th>
-                          <th className="px-6 py-4">Importe Original</th>
-                          <th className="px-6 py-4">Equivalente base (USD)</th>
-                          <th className="px-6 py-4">Nota / Descripción</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-900 text-sm text-slate-300">
-                        {(() => {
-                          // Group transactions by local date key (YYYY-MM-DD)
-                          const grouped: { [key: string]: Transaction[] } = {};
-                          transactions.forEach((t) => {
-                            const date = new Date(t.transactionDate);
-                            const key = getLocalDateString(date);
-                            if (!grouped[key]) grouped[key] = [];
-                            grouped[key].push(t);
-                          });
 
-                          // Sort keys in descending order
-                          const sortedKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+                  <button 
+                    onClick={fetchTransactions}
+                    className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-900 hover:border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer h-[34px]"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Refrescar
+                  </button>
 
-                          return sortedKeys.map((dateKey) => {
-                            const [year, month, day] = dateKey.split('-').map(Number);
-                            const date = new Date(year, month - 1, day);
-                            const formattedDate = date.toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric'
-                            });
-                            const weekday = date.toLocaleDateString('es-ES', { weekday: 'long' });
-                            const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-
-                            return (
-                              <React.Fragment key={dateKey}>
-                                {/* Day Header Group row */}
-                                <tr className="bg-slate-900/35 border-b border-slate-900 select-none">
-                                  <td colSpan={6} className="px-6 py-3.5">
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-extrabold text-slate-200 tracking-tight text-sm">
-                                        {formattedDate}
-                                      </span>
-                                      <span className="text-[10px] font-extrabold uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2.5 py-0.5 rounded-full">
-                                        {capitalizedWeekday}
-                                      </span>
-                                    </div>
-                                  </td>
-                                </tr>
-
-                                {/* Child rows */}
-                                {grouped[dateKey].map((t) => (
-                                  <tr key={t.id} className="hover:bg-slate-900/15 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-medium">
-                                      {new Date(t.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td className="px-6 py-4 font-semibold text-slate-200 whitespace-nowrap">{t.account.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <span className="text-slate-200">
-                                        {t.transactionType === 'TRANSFER' && t.destinationAccount
-                                          ? `Transferencia (→ ${t.destinationAccount.name})`
-                                          : t.category.name}
-                                      </span>
-                                      {t.subcategory && (
-                                        <span className="text-xs text-slate-500 block">&gt; {t.subcategory.name}</span>
-                                      )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <span className={`font-semibold ${
-                                        t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-100'
-                                      }`}>
-                                        {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
-                                        {formatCents(t.amount)}
-                                      </span>
-                                      <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200">
-                                      ${formatCents(t.baseAmountUsd)}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-400 max-w-xs truncate" title={t.note || t.description || ''}>
-                                      <span>{t.note || '-'}</span>
-                                      {t.description && (
-                                        <span className="text-xs text-slate-500 block italic">{t.description}</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </React.Fragment>
-                            );
-                          });
-                        })()}
-                      </tbody>
-                    </table>
+                  {/* Dropdown Selección Columnas */}
+                  <div className="relative" ref={colDropdownRef}>
+                    <button
+                      onClick={() => setIsColDropdownOpen(!isColDropdownOpen)}
+                      className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-900 hover:border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer h-[34px]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15m-9-15h12A2.25 2.25 0 0121 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5A2.25 2.25 0 012.25 17.25V6.75A2.25 2.25 0 014.5 4.5z" />
+                      </svg>
+                      Columnas
+                    </button>
+                    
+                    {isColDropdownOpen && (
+                      <div className="absolute right-0 mt-2 bg-slate-950 border border-slate-850 p-3 rounded-xl shadow-2xl z-55 w-48 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pb-1 border-b border-slate-900 mb-1">
+                          Mostrar Columnas
+                        </p>
+                        {Object.entries({
+                          time: 'Hora',
+                          account: 'Cuenta / Categoría',
+                          amount: 'Importe Original',
+                          usdAmount: 'Importe USD',
+                          note: 'Nota / Descripción'
+                        }).map(([key, label]) => (
+                          <label 
+                            key={key} 
+                            className="flex items-center gap-2 text-xs text-slate-350 text-slate-300 hover:text-slate-100 cursor-pointer select-none py-1 hover:bg-slate-900/30 px-1 rounded transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={visibleColumns[key as keyof typeof visibleColumns]}
+                              onChange={() => toggleColumn(key as keyof typeof visibleColumns)}
+                              className="rounded border-slate-800 bg-slate-950 text-indigo-650 focus:ring-indigo-650 h-3.5 w-3.5 cursor-pointer accent-indigo-600"
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                </div>
               </div>
+
+              {isLoadingTxs ? (
+                <div className="bg-slate-900/20 border border-slate-900 rounded-3xl py-20 flex flex-col items-center justify-center space-y-3 backdrop-blur-sm">
+                  <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-slate-500 text-sm">Cargando transacciones...</p>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="bg-slate-900/20 border border-slate-900 rounded-3xl py-16 px-6 flex flex-col items-center justify-center text-center space-y-4 max-w-md mx-auto backdrop-blur-sm">
+                  <div className="p-4 bg-slate-900 border border-slate-850 text-indigo-400/80 rounded-full shadow-inner animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-slate-200 text-md">No se encontraron movimientos</h3>
+                    <p className="text-slate-500 text-sm mt-1">
+                      No hay transacciones guardadas en SQLite que coincidan con los filtros seleccionados.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleClearFilters}
+                    className="px-4 py-2 text-xs font-semibold text-indigo-400 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-xl transition-all cursor-pointer"
+                  >
+                    Limpiar Filtros
+                  </button>
+                </div>
+              ) : viewMode === 'calendar' ? (
+                <CalendarView
+                  transactions={transactions}
+                  startDate={startDate}
+                  endDate={endDate}
+                  onEditTransaction={setEditingTransaction}
+                />
+              ) : (
+                <div className="bg-slate-900/20 border border-slate-900 rounded-3xl overflow-hidden backdrop-blur-sm">
+                  <TransactionTable
+                    transactions={transactions}
+                    visibleColumns={visibleColumns}
+                    onEditTransaction={setEditingTransaction}
+                    groupByDate={true}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -667,6 +707,14 @@ export default function Dashboard() {
           <div className="animate-fade-in">
             <CategoryManager />
           </div>
+        )}
+        {editingTransaction && (
+          <EditTransactionModal
+            transaction={editingTransaction}
+            accounts={accounts}
+            onClose={() => setEditingTransaction(null)}
+            onSuccess={handleEditSuccess}
+          />
         )}
       </div>
     </main>

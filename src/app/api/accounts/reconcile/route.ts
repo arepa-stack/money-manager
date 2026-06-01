@@ -38,30 +38,29 @@ export async function POST(request: NextRequest) {
     let currentBalanceCents = 0;
     let oldestDate: Date | null = null;
 
-    // Helper para actualizar la fecha más antigua
-    const updateOldestDate = (d: Date) => {
+    // Procesar transacciones salientes
+    for (const tx of account.transactions) {
+      const d = tx.transactionDate;
       if (!oldestDate || d < oldestDate) {
         oldestDate = d;
       }
-    };
-
-    // Procesar transacciones salientes
-    account.transactions.forEach((tx) => {
-      updateOldestDate(tx.transactionDate);
       if (tx.transactionType === 'INCOME') {
         currentBalanceCents += tx.baseAmountUsd;
       } else if (tx.transactionType === 'EXPENSE' || tx.transactionType === 'TRANSFER') {
         currentBalanceCents -= tx.baseAmountUsd;
       }
-    });
+    }
 
     // Procesar transferencias entrantes
-    account.receivedTransfers.forEach((tx) => {
-      updateOldestDate(tx.transactionDate);
+    for (const tx of account.receivedTransfers) {
+      const d = tx.transactionDate;
+      if (!oldestDate || d < oldestDate) {
+        oldestDate = d;
+      }
       if (tx.transactionType === 'TRANSFER') {
         currentBalanceCents += tx.baseAmountUsd;
       }
-    });
+    }
 
     // 2. Calcular diferencia
     // El usuario envía un flotante (ej 15.50), convertimos a centavos (1550)
