@@ -12,6 +12,7 @@ import CalendarView from '@/components/CalendarView';
 import EditTransactionModal from '@/components/EditTransactionModal';
 import TransactionTable from '@/components/TransactionTable';
 import BcvRates from '@/components/BcvRates';
+import CategoryDistribution from '@/components/CategoryDistribution';
 
 interface Transaction {
   id: string;
@@ -688,6 +689,11 @@ export default function Dashboard() {
                   <span className="text-[10px] text-slate-500 mt-2 block">Gastos deducidos en rango</span>
                 </div>
               </section>
+            )}
+
+            {/* Category spending distribution */}
+            {transactions.length > 0 && (
+              <CategoryDistribution transactions={transactions} />
             )}
 
             {/* Transactions List */}

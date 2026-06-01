@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     if (!shouldFetch && latestRates.length > 0) {
       const lastFetched = Number(latestRates[0].fetched_at);
       const cacheAge = now - lastFetched;
-      const cacheLimit = 2 * 60 * 60 * 1000; // 2 hours
+      const cacheLimit = 1 * 60 * 60 * 1000; // 1 hour
       if (cacheAge > cacheLimit) {
         shouldFetch = true;
       }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import QuickConverter from './QuickConverter';
 
 interface BcvHistoryItem {
   id: string;
@@ -281,6 +282,9 @@ export default function BcvRates() {
             </div>
 
           </div>
+
+          {/* Quick Converter Section */}
+          <QuickConverter bcvData={bcvData} />
 
           {/* Metadata section (Dates & Status) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/40 border border-slate-900 p-4.5 rounded-2xl text-xs text-slate-400">
