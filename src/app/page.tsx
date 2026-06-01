@@ -56,6 +56,10 @@ export default function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+  const [availableNotes, setAvailableNotes] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isLoadingTxs, setIsLoadingTxs] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -105,6 +109,14 @@ export default function Dashboard() {
   };
 
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Initialize dates to current month, load accounts
   useEffect(() => {
     const now = new Date();
@@ -114,6 +126,7 @@ export default function Dashboard() {
     setEndDate(getLocalDateString(lastDay));
     
     fetchAccountsList();
+    fetchAvailableNotes();
   }, []);
 
   // Initialize adjustment values for all accounts
@@ -155,6 +168,18 @@ export default function Dashboard() {
     }
   };
 
+  const fetchAvailableNotes = async () => {
+    try {
+      const res = await fetch('/api/transactions/notes');
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableNotes(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar notas para autocompletado:', err);
+    }
+  };
+
   const fetchTransactions = async () => {
     if (!startDate || !endDate) return;
     setIsLoadingTxs(true);
@@ -164,6 +189,7 @@ export default function Dashboard() {
       params.append('startDate', startDate);
       params.append('endDate', endDate);
       params.append('timezoneOffset', new Date().getTimezoneOffset().toString());
+      if (debouncedSearchQuery) params.append('search', debouncedSearchQuery);
 
       const res = await fetch(`/api/transactions?${params.toString()}`);
       if (res.ok) {
@@ -180,7 +206,7 @@ export default function Dashboard() {
   // Re-fetch transactions on filter changes
   useEffect(() => {
     fetchTransactions();
-  }, [selectedAccountId, startDate, endDate]);
+  }, [selectedAccountId, startDate, endDate, debouncedSearchQuery]);
 
   const handleAnalyzed = (result: ImportAnalysisResult, uploadedFile: File) => {
     setAnalysisResult(result);
@@ -194,6 +220,7 @@ export default function Dashboard() {
     setImportState('success');
     fetchTransactions();
     fetchAccountsList();
+    fetchAvailableNotes();
     setError(null);
   };
 
@@ -260,6 +287,8 @@ export default function Dashboard() {
 
   const handleClearFilters = () => {
     setSelectedAccountId('');
+    setSearchQuery('');
+    setDebouncedSearchQuery('');
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -629,7 +658,82 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              {/* Free Text Search with Autocomplete */}
+              <div className="relative w-full pt-1">
+                <div className="relative w-full flex items-center">
+                  <span className="absolute left-3 text-slate-500 flex items-center pointer-events-none mt-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    placeholder="Buscar movimientos por nota..."
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-9 pr-9 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-600"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setShowSuggestions(false);
+                      }}
+                      className="absolute right-3 text-slate-500 hover:text-slate-250 transition-colors p-1"
+                      title="Limpiar búsqueda"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {/* Custom Autocomplete Suggestions Menu */}
+                {showSuggestions && searchQuery && (
+                  (() => {
+                    const matches = availableNotes
+                      .filter((n) => n.toLowerCase().includes(searchQuery.toLowerCase()) && n.toLowerCase() !== searchQuery.toLowerCase())
+                      .slice(0, 6);
+                    
+                    if (matches.length === 0) return null;
+
+                    return (
+                      <div className="absolute left-0 right-0 mt-1 bg-slate-950/95 border border-slate-850/85 rounded-xl shadow-2xl z-55 max-h-48 overflow-y-auto backdrop-blur-md divide-y divide-slate-900/50">
+                        {matches.map((note) => (
+                          <button
+                            key={note}
+                            type="button"
+                            onMouseDown={() => {
+                              setSearchQuery(note);
+                              setShowSuggestions(false);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-350 hover:text-slate-100 hover:bg-slate-900/50 cursor-pointer transition-colors text-left font-medium block truncate"
+                          >
+                            {note}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )}
+
+                {/* Search Mode Warning Badge */}
+                {searchQuery && (
+                  <div className="mt-2.5 flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold rounded-lg uppercase tracking-wider w-fit animate-fade-in">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    Búsqueda global activa: filtros de fecha y cuenta ignorados
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                 {/* Account selector */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-400">Cuenta Bancaria</label>

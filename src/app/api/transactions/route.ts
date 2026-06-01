@@ -7,29 +7,36 @@ export async function GET(request: NextRequest) {
     const accountId = searchParams.get('accountId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const search = searchParams.get('search');
 
     const where: any = {};
 
-    if (accountId) {
-      where.OR = [
-        { accountId },
-        { destinationAccountId: accountId },
-      ];
-    }
-
-    if (startDate || endDate) {
-      where.transactionDate = {};
-      
-      const timezoneOffset = searchParams.get('timezoneOffset');
-      const offsetMinutes = timezoneOffset ? parseInt(timezoneOffset, 10) : new Date().getTimezoneOffset();
-      
-      if (startDate) {
-        const startUtc = new Date(`${startDate}T00:00:00.000Z`);
-        where.transactionDate.gte = new Date(startUtc.getTime() + offsetMinutes * 60 * 1000);
+    if (search) {
+      where.note = {
+        contains: search
+      };
+    } else {
+      if (accountId) {
+        where.OR = [
+          { accountId },
+          { destinationAccountId: accountId },
+        ];
       }
-      if (endDate) {
-        const endUtc = new Date(`${endDate}T23:59:59.999Z`);
-        where.transactionDate.lte = new Date(endUtc.getTime() + offsetMinutes * 60 * 1000);
+
+      if (startDate || endDate) {
+        where.transactionDate = {};
+        
+        const timezoneOffset = searchParams.get('timezoneOffset');
+        const offsetMinutes = timezoneOffset ? parseInt(timezoneOffset, 10) : new Date().getTimezoneOffset();
+        
+        if (startDate) {
+          const startUtc = new Date(`${startDate}T00:00:00.000Z`);
+          where.transactionDate.gte = new Date(startUtc.getTime() + offsetMinutes * 60 * 1000);
+        }
+        if (endDate) {
+          const endUtc = new Date(`${endDate}T23:59:59.999Z`);
+          where.transactionDate.lte = new Date(endUtc.getTime() + offsetMinutes * 60 * 1000);
+        }
       }
     }
 
