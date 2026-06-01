@@ -42,4 +42,9 @@ export interface ImportExecuteResult {
   newAccountsCreatedCount: number;
   newCategoriesCreatedCount: number;
   newSubcategoriesCreatedCount: number;
+  accountBalances?: {
+    accountId: string;
+    accountName: string;
+    currentBalanceUsd: number;
+  }[];
 }

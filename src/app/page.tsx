@@ -11,6 +11,7 @@ import { formatCents } from '@/lib/moneyUtils';
 import CalendarView from '@/components/CalendarView';
 import EditTransactionModal from '@/components/EditTransactionModal';
 import TransactionTable from '@/components/TransactionTable';
+import BcvRates from '@/components/BcvRates';
 
 interface Transaction {
   id: string;
@@ -40,7 +41,7 @@ const getLocalDateString = (date: Date) => {
 };
 
 export default function Dashboard() {
-  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories'>('import');
+  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'bcv'>('import');
   const [importState, setImportState] = useState<'upload' | 'preview' | 'success'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ImportAnalysisResult | null>(null);
@@ -58,6 +59,9 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [adjustedAccounts, setAdjustedAccounts] = useState<Record<string, boolean>>({});
+  const [adjustingAccountId, setAdjustingAccountId] = useState<string | null>(null);
+  const [adjustmentValues, setAdjustmentValues] = useState<Record<string, string>>({});
 
   const [visibleColumns, setVisibleColumns] = useState({
     time: true,
@@ -111,6 +115,17 @@ export default function Dashboard() {
     fetchAccountsList();
   }, []);
 
+  // Initialize adjustment values for all accounts
+  useEffect(() => {
+    if (executeResult?.accountBalances) {
+      const initials: Record<string, string> = {};
+      executeResult.accountBalances.forEach((acc) => {
+        initials[acc.accountId] = '0.00';
+      });
+      setAdjustmentValues(initials);
+    }
+  }, [executeResult]);
+
   const fetchAccountsList = async () => {
     try {
       const res = await fetch('/api/accounts/balances');
@@ -147,6 +162,7 @@ export default function Dashboard() {
       if (selectedAccountId) params.append('accountId', selectedAccountId);
       params.append('startDate', startDate);
       params.append('endDate', endDate);
+      params.append('timezoneOffset', new Date().getTimezoneOffset().toString());
 
       const res = await fetch(`/api/transactions?${params.toString()}`);
       if (res.ok) {
@@ -193,6 +209,31 @@ export default function Dashboard() {
     setAnalysisResult(null);
     setExecuteResult(null);
     setError(null);
+    setAdjustedAccounts({});
+  };
+
+  const handleApplyAdjustment = async (accountId: string, targetBalance: number) => {
+    setAdjustingAccountId(accountId);
+    setError(null);
+    try {
+      const res = await fetch('/api/accounts/reconcile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, targetBalance, clientDate: new Date().toISOString() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al aplicar el ajuste.');
+      }
+      setAdjustedAccounts(prev => ({ ...prev, [accountId]: true }));
+      // Refrescar transacciones y cuentas
+      fetchTransactions();
+      fetchAccountsList();
+    } catch (err: any) {
+      setError(err.message || 'Error de red al aplicar el ajuste.');
+    } finally {
+      setAdjustingAccountId(null);
+    }
   };
 
   // Date range preset helper
@@ -385,9 +426,23 @@ export default function Dashboard() {
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
             )}
           </button>
+          <button
+            onClick={() => setCurrentTab('bcv')}
+            className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
+              currentTab === 'bcv' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Tasas de Cambio
+            {currentTab === 'bcv' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
+            )}
+          </button>
         </div>
 
         {/* Tab Contents */}
+        {currentTab === 'bcv' && (
+          <BcvRates />
+        )}
         {currentTab === 'import' && (
           <section className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 backdrop-blur-md shadow-2xl relative overflow-hidden">
             {importState === 'upload' && (
@@ -446,6 +501,77 @@ export default function Dashboard() {
                     <div className="font-semibold text-slate-200 text-right">{executeResult.newSubcategoriesCreatedCount}</div>
                   </div>
                 </div>
+                       {/* Estados de Cuenta y Ajustes */}
+                {executeResult.accountBalances && executeResult.accountBalances.length > 0 && (
+                  <div className="w-full bg-slate-900/40 border border-slate-900 p-5 rounded-2xl text-left space-y-3 animate-fade-in">
+                    <div className="flex items-center gap-2 text-indigo-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 shrink-0 text-indigo-400">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Ajuste de Saldo de Apertura por Cuenta</h4>
+                    </div>
+                    
+                    <p className="text-xs text-slate-400">
+                      Puedes ingresar un saldo objetivo personalizado para conciliar de forma automática la apertura de tus cuentas (las cuentas con saldo negativo se destacan en rojo):
+                    </p>
+
+                    <div className="space-y-2.5 pt-1">
+                      {executeResult.accountBalances.map((acc) => {
+                        const isAdjusted = adjustedAccounts[acc.accountId];
+                        const isAdjusting = adjustingAccountId === acc.accountId;
+                        const isNegative = acc.currentBalanceUsd < 0;
+                        
+                        return (
+                          <div 
+                            key={acc.accountId} 
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl gap-3 transition-colors ${
+                              isNegative
+                                ? 'bg-rose-500/5 border border-rose-500/20'
+                                : 'bg-slate-950/40 border border-slate-900'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <span className="text-xs font-semibold text-slate-200 block truncate">{acc.accountName}</span>
+                              <span className={`text-xs font-bold block mt-0.5 ${isNegative ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                {isNegative ? '-' : '+'}${formatCents(Math.abs(acc.currentBalanceUsd))} USD
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                              <span className="text-[10px] text-slate-500 whitespace-nowrap">Saldo obj:</span>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">$</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={adjustmentValues[acc.accountId] ?? '0.00'}
+                                  onChange={(e) => setAdjustmentValues(prev => ({ ...prev, [acc.accountId]: e.target.value }))}
+                                  disabled={isAdjusted || isAdjusting}
+                                  className="w-20 bg-slate-900 border border-slate-850 rounded pl-4.5 pr-1.5 py-1 text-center text-xs text-slate-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const val = parseFloat(adjustmentValues[acc.accountId] || '0.00');
+                                  handleApplyAdjustment(acc.accountId, val);
+                                }}
+                                disabled={isAdjusted || isAdjusting || isNaN(parseFloat(adjustmentValues[acc.accountId] || ''))}
+                                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer select-none shrink-0 ${
+                                  isAdjusted
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 cursor-default'
+                                    : 'bg-indigo-600 border-indigo-500 hover:bg-indigo-500 hover:border-indigo-400 text-white disabled:opacity-55'
+                                }`}
+                              >
+                                {isAdjusting && adjustingAccountId === acc.accountId ? '...' : isAdjusted ? 'Ajustado' : 'Ajustar'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={handleReset}

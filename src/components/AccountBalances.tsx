@@ -60,7 +60,11 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
       const res = await fetch('/api/accounts/reconcile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: reconcileAccountId, targetBalance })
+        body: JSON.stringify({ 
+          accountId: reconcileAccountId, 
+          targetBalance,
+          clientDate: new Date().toISOString()
+        })
       });
       
       const data = await res.json();

@@ -3,6 +3,10 @@ import prisma from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const timezoneOffset = searchParams.get('timezoneOffset');
+    const offsetMinutes = timezoneOffset ? parseInt(timezoneOffset, 10) : new Date().getTimezoneOffset();
+
     // Retrieve all transactions sorted chronologically
     const transactions = await prisma.transaction.findMany({
       orderBy: { transactionDate: 'asc' },
@@ -21,8 +25,9 @@ export async function GET(request: NextRequest) {
     const netChangeByMonth: { [key: string]: number } = {};
 
     for (const tx of transactions) {
-      const date = new Date(tx.transactionDate);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const localTime = tx.transactionDate.getTime() - offsetMinutes * 60 * 1000;
+      const date = new Date(localTime);
+      const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 
       let change = 0;
       if (tx.transactionType === 'INCOME') {

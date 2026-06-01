@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
-    const { accountId, targetBalance } = await request.json();
+    const { accountId, targetBalance, clientDate } = await request.json();
 
     if (!accountId || typeof targetBalance !== 'number') {
       return NextResponse.json({ error: 'Faltan parámetros o son inválidos' }, { status: 400 });
@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       include: {
         transactions: {
           select: {
+            id: true,
             transactionType: true,
             baseAmountUsd: true,
             transactionDate: true
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
         },
         receivedTransfers: {
           select: {
+            id: true,
             transactionType: true,
             baseAmountUsd: true,
             transactionDate: true
@@ -35,11 +37,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cuenta no encontrada' }, { status: 404 });
     }
 
+    // Buscar si ya existe una transacción de apertura/ajuste previa para esta cuenta
+    const openingTx = await prisma.transaction.findFirst({
+      where: { accountId, isOpeningBalance: true }
+    });
+
     let currentBalanceCents = 0;
     let oldestDate: Date | null = null;
 
     // Procesar transacciones salientes
     for (const tx of account.transactions) {
+      // Excluir la transacción de apertura existente del cálculo de saldo actual
+      if (openingTx && tx.id === openingTx.id) {
+        continue;
+      }
       const d = tx.transactionDate;
       if (!oldestDate || d < oldestDate) {
         oldestDate = d;
@@ -53,6 +64,10 @@ export async function POST(request: NextRequest) {
 
     // Procesar transferencias entrantes
     for (const tx of account.receivedTransfers) {
+      // Excluir la de apertura
+      if (openingTx && tx.id === openingTx.id) {
+        continue;
+      }
       const d = tx.transactionDate;
       if (!oldestDate || d < oldestDate) {
         oldestDate = d;
@@ -68,6 +83,15 @@ export async function POST(request: NextRequest) {
     const diffCents = targetBalanceCents - currentBalanceCents;
 
     if (diffCents === 0) {
+      if (openingTx) {
+        await prisma.transaction.delete({
+          where: { id: openingTx.id }
+        });
+        return NextResponse.json({ 
+          message: 'El saldo ya está conciliado (se eliminó el ajuste de saldo inicial anterior)', 
+          created: false 
+        });
+      }
       return NextResponse.json({ message: 'El saldo ya está conciliado', created: false });
     }
 
@@ -88,30 +112,44 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 4. Invariante cronológico
-    // Establecer la fecha de la transacción 1 segundo antes que el registro más antiguo
-    let txDate = oldestDate ? new Date(oldestDate.getTime() - 1000) : new Date('2000-01-01T00:00:00.000Z');
+    // 4. Fecha de transacción: día actual del ajuste (preferiblemente la fecha local del cliente)
+    const txDate = clientDate ? new Date(clientDate) : new Date();
 
-    // 5. Crear la transacción de ajuste
-    const newTx = await prisma.transaction.create({
-      data: {
-        accountId,
-        categoryId: category.id,
-        transactionType: isIncome ? 'INCOME' : 'EXPENSE',
-        amount: adjustAmount,
-        currency: 'USD',
-        baseAmountUsd: adjustAmount,
-        transactionDate: txDate,
-        note: 'Conciliación manual de saldo inicial',
-        importHash: `MANUAL_ADJUST_${accountId}_${Date.now()}_${randomUUID()}`,
-        isOpeningBalance: true
-      }
-    });
+    // 5. Crear o actualizar la transacción de ajuste
+    let resultTx;
+    if (openingTx) {
+      resultTx = await prisma.transaction.update({
+        where: { id: openingTx.id },
+        data: {
+          categoryId: category.id,
+          transactionType: isIncome ? 'INCOME' : 'EXPENSE',
+          amount: adjustAmount,
+          baseAmountUsd: adjustAmount,
+          transactionDate: txDate,
+          note: 'Conciliación manual de saldo inicial (modificado)'
+        }
+      });
+    } else {
+      resultTx = await prisma.transaction.create({
+        data: {
+          accountId,
+          categoryId: category.id,
+          transactionType: isIncome ? 'INCOME' : 'EXPENSE',
+          amount: adjustAmount,
+          currency: 'USD',
+          baseAmountUsd: adjustAmount,
+          transactionDate: txDate,
+          note: 'Conciliación manual de saldo inicial',
+          importHash: `MANUAL_ADJUST_${accountId}_${Date.now()}_${randomUUID()}`,
+          isOpeningBalance: true
+        }
+      });
+    }
 
     return NextResponse.json({ 
       message: 'Saldo conciliado correctamente', 
       created: true, 
-      transaction: newTx 
+      transaction: resultTx 
     });
 
   } catch (error: any) {

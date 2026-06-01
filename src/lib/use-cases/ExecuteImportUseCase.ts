@@ -188,13 +188,54 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
       });
     }
 
+    // 7. Calcular saldos actuales de todas las cuentas
+    const dbAccounts = await tx.account.findMany({
+      include: {
+        transactions: {
+          select: {
+            transactionType: true,
+            baseAmountUsd: true,
+          },
+        },
+        receivedTransfers: {
+          select: {
+            transactionType: true,
+            baseAmountUsd: true,
+          },
+        },
+      },
+    });
+
+    const accountBalances = dbAccounts
+      .map((account) => {
+        let balance = 0;
+        account.transactions.forEach((tx) => {
+          if (tx.transactionType === 'INCOME') {
+            balance += tx.baseAmountUsd;
+          } else if (tx.transactionType === 'EXPENSE' || tx.transactionType === 'TRANSFER') {
+            balance -= tx.baseAmountUsd;
+          }
+        });
+        account.receivedTransfers.forEach((tx) => {
+          if (tx.transactionType === 'TRANSFER') {
+            balance += tx.baseAmountUsd;
+          }
+        });
+        return {
+          accountId: account.id,
+          accountName: account.name,
+          currentBalanceUsd: balance,
+        };
+      });
+
     return {
       totalParsed: parsedTransactions.length,
       totalInserted: transactionsData.length,
       totalSkipped: parsedTransactions.length - transactionsData.length,
       newAccountsCreatedCount: missingAccNames.length,
       newCategoriesCreatedCount: missingCatNames.length,
-      newSubcategoriesCreatedCount: subcategoriesToCreate.length
+      newSubcategoriesCreatedCount: subcategoriesToCreate.length,
+      accountBalances
     };
   });
 }

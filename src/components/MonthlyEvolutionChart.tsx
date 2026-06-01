@@ -21,7 +21,7 @@ export default function MonthlyEvolutionChart() {
     const fetchEvolution = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch('/api/reports/evolution');
+        const res = await fetch(`/api/reports/evolution?timezoneOffset=${new Date().getTimezoneOffset()}`);
         if (!res.ok) {
           throw new Error('Error al cargar datos del gráfico');
         }

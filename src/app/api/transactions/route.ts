@@ -19,13 +19,17 @@ export async function GET(request: NextRequest) {
 
     if (startDate || endDate) {
       where.transactionDate = {};
+      
+      const timezoneOffset = searchParams.get('timezoneOffset');
+      const offsetMinutes = timezoneOffset ? parseInt(timezoneOffset, 10) : new Date().getTimezoneOffset();
+      
       if (startDate) {
-        where.transactionDate.gte = new Date(startDate);
+        const startUtc = new Date(`${startDate}T00:00:00.000Z`);
+        where.transactionDate.gte = new Date(startUtc.getTime() + offsetMinutes * 60 * 1000);
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.transactionDate.lte = end;
+        const endUtc = new Date(`${endDate}T23:59:59.999Z`);
+        where.transactionDate.lte = new Date(endUtc.getTime() + offsetMinutes * 60 * 1000);
       }
     }
 
