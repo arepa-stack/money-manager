@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
     const where: any = {};
 
     if (accountId) {
-      where.accountId = accountId;
+      where.OR = [
+        { accountId },
+        { destinationAccountId: accountId },
+      ];
     }
 
     if (startDate || endDate) {
@@ -34,6 +37,7 @@ export async function GET(request: NextRequest) {
         account: true,
         category: true,
         subcategory: true,
+        destinationAccount: true,
       },
     });
     return NextResponse.json(transactions);

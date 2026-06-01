@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
+import { formatCents } from '@/lib/moneyUtils';
 
 interface ImportPreviewProps {
   analysis: ImportAnalysisResult;
@@ -159,12 +160,12 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
                       t.type === 'INCOME' ? 'text-emerald-400' : t.type === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-200'
                     }`}>
                       {t.type === 'EXPENSE' ? '-' : t.type === 'INCOME' ? '+' : ''}
-                      {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCents(t.amount)}
                     </span>
                     <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap text-slate-300">
-                    ${t.baseAmountUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ${formatCents(t.baseAmountUsd)}
                   </td>
                   <td className="px-6 py-3 max-w-[200px] truncate text-slate-400" title={t.note || ''}>
                     {t.note || '-'}

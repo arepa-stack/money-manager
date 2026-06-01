@@ -18,14 +18,21 @@ export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisR
   }
 
   // 1. Extract unique names
-  const accountNames = Array.from(new Set(parsedTransactions.map(t => t.accountName)));
-  const categoryNames = Array.from(new Set(parsedTransactions.map(t => t.categoryName)));
+  const accountNames = Array.from(
+    new Set([
+      ...parsedTransactions.map((t) => t.accountName),
+      ...parsedTransactions.filter((t) => t.type === 'TRANSFER').map((t) => t.categoryName),
+    ])
+  );
+  const categoryNames = Array.from(
+    new Set(parsedTransactions.filter((t) => t.type !== 'TRANSFER').map((t) => t.categoryName))
+  );
   
   // subcategories need to be associated with their category to be uniquely checked
   const subcategoryCombos = Array.from(
     new Map(
       parsedTransactions
-        .filter(t => !!t.subcategoryName)
+        .filter(t => t.type !== 'TRANSFER' && !!t.subcategoryName)
         .map(t => [`${t.categoryName}_${t.subcategoryName}`, { category: t.categoryName, sub: t.subcategoryName! }])
     ).values()
   );
@@ -59,8 +66,14 @@ export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisR
   // We'll infer it from the first transaction that uses this category.
   const newCategoriesMap = new Map<string, TransactionType>();
   parsedTransactions.forEach(t => {
-    if (!existingCategorySet.has(t.categoryName) && !newCategoriesMap.has(t.categoryName)) {
-      newCategoriesMap.set(t.categoryName, t.type);
+    if (t.type === 'TRANSFER') {
+      if (!existingCategorySet.has('Transferencia') && !newCategoriesMap.has('Transferencia')) {
+        newCategoriesMap.set('Transferencia', 'TRANSFER');
+      }
+    } else {
+      if (!existingCategorySet.has(t.categoryName) && !newCategoriesMap.has(t.categoryName)) {
+        newCategoriesMap.set(t.categoryName, t.type);
+      }
     }
   });
   const newCategories = Array.from(newCategoriesMap.entries()).map(([name, type]) => ({ name, type }));

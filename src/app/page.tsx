@@ -7,6 +7,7 @@ import AccountBalances from '@/components/AccountBalances';
 import DateRangePicker from '@/components/DateRangePicker';
 import CategoryManager from '@/components/CategoryManager';
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
+import { formatCents } from '@/lib/moneyUtils';
 
 interface Transaction {
   id: string;
@@ -20,6 +21,7 @@ interface Transaction {
   account: { name: string };
   category: { name: string };
   subcategory: { name: string } | null;
+  destinationAccount: { name: string } | null;
 }
 
 // Timezone-safe local date YYYY-MM-DD formatter
@@ -484,7 +486,7 @@ export default function Dashboard() {
                 <div className="bg-slate-900/40 border border-slate-900 p-6 rounded-3xl backdrop-blur-sm shadow-md">
                   <p className="text-sm font-medium text-slate-400">Balance del Período</p>
                   <p className={`text-3xl font-extrabold mt-2 ${totalBalanceUsd >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {totalBalanceUsd >= 0 ? '+' : ''}${totalBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {totalBalanceUsd >= 0 ? '+' : ''}${formatCents(totalBalanceUsd)}
                   </p>
                   <span className="text-[10px] text-slate-500 mt-2 block">Sumatoria neta filtrada en USD</span>
                 </div>
@@ -492,7 +494,7 @@ export default function Dashboard() {
                 <div className="bg-slate-900/40 border border-slate-900 p-6 rounded-3xl backdrop-blur-sm shadow-md">
                   <p className="text-sm font-medium text-emerald-400">Ingresos del Período</p>
                   <p className="text-3xl font-extrabold text-emerald-300 mt-2">
-                    ${totalIncomeUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ${formatCents(totalIncomeUsd)}
                   </p>
                   <span className="text-[10px] text-slate-500 mt-2 block">Ingresos en rango</span>
                 </div>
@@ -500,7 +502,7 @@ export default function Dashboard() {
                 <div className="bg-slate-900/40 border border-slate-900 p-6 rounded-3xl backdrop-blur-sm shadow-md">
                   <p className="text-sm font-medium text-rose-400">Gastos del Período</p>
                   <p className="text-3xl font-extrabold text-rose-300 mt-2">
-                    -${totalExpenseUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    -${formatCents(totalExpenseUsd)}
                   </p>
                   <span className="text-[10px] text-slate-500 mt-2 block">Gastos deducidos en rango</span>
                 </div>
@@ -610,7 +612,11 @@ export default function Dashboard() {
                                     </td>
                                     <td className="px-6 py-4 font-semibold text-slate-200 whitespace-nowrap">{t.account.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                      <span className="text-slate-200">{t.category.name}</span>
+                                      <span className="text-slate-200">
+                                        {t.transactionType === 'TRANSFER' && t.destinationAccount
+                                          ? `Transferencia (→ ${t.destinationAccount.name})`
+                                          : t.category.name}
+                                      </span>
                                       {t.subcategory && (
                                         <span className="text-xs text-slate-500 block">&gt; {t.subcategory.name}</span>
                                       )}
@@ -620,12 +626,12 @@ export default function Dashboard() {
                                         t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-100'
                                       }`}>
                                         {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
-                                        {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        {formatCents(t.amount)}
                                       </span>
                                       <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200">
-                                      ${t.baseAmountUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      ${formatCents(t.baseAmountUsd)}
                                     </td>
                                     <td className="px-6 py-4 text-slate-400 max-w-xs truncate" title={t.note || t.description || ''}>
                                       <span>{t.note || '-'}</span>

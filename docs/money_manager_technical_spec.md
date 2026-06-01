@@ -45,6 +45,7 @@ El motor requerirá las siguientes tablas con sus respectivas restricciones de i
 - `note`: TEXT (Nullable).
 - `description`: TEXT (Nullable).
 - `created_at`: TIMESTAMP.
+- `destination_account_id`: UUID (Foreign Key -> `accounts.id`, Nullable). **Crítico para transferencias de partida doble**.
 
 ---
 
@@ -151,8 +152,9 @@ function generateImportHash(dto: Partial<ParsedTransactionDTO>): string {
 ```
 
 ### 4.3. Normalización del Tipo de Transacción y Montos
-- Input `Gasto` / `Dinero gastado`: Asignar `TransactionType.EXPENSE`. El `amount` crudo de Excel suele venir en positivo. La BD debe almacenarlo **negativo** o absoluto dependiendo de la convención del proyecto, pero matemáticamente debe restar en el dominio. *Recomendación técnica:* Guardar el `amount` como absoluto en la BD y dejar que la lógica SQL aplique el signo según el `transaction_type`.
+- Input `Gasto`: Asignar `TransactionType.EXPENSE`. El `amount` crudo de Excel suele venir en positivo. La BD debe almacenarlo **negativo** o absoluto dependiendo de la convención del proyecto, pero matemáticamente debe restar en el dominio. *Recomendación técnica:* Guardar el `amount` como absoluto en la BD y dejar que la lógica SQL aplique el signo según el `transaction_type`.
 - Input `Ingreso`: Asignar `TransactionType.INCOME`.
+- Input `Transferencia` / `Dinero gastado`: Asignar `TransactionType.TRANSFER`. La columna `Categoría` representa el nombre de la cuenta de destino (`destinationAccountId`), la cual debe ser resuelta/creada dinámicamente y guardada en su campo relacional. La transacción se asocia a la categoría de sistema `"Transferencia"`.
 - Si `baseAmountUsd` (Columna USD) viene vacío, hacer fallback a 0 temporalmente, o rechazar si es estricto.
 
 ---

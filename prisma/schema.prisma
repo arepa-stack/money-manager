@@ -11,17 +11,18 @@ datasource db {
 }
 
 model Account {
-  id           String        @id @default(uuid())
-  name         String        @unique
-  createdAt    DateTime      @default(now()) @map("created_at")
-  transactions Transaction[]
+  id                String        @id @default(uuid())
+  name              String        @unique
+  createdAt         DateTime      @default(now()) @map("created_at")
+  transactions      Transaction[] @relation("TransferOrigin")
+  receivedTransfers Transaction[] @relation("TransferDestination")
 
   @@map("accounts")
 }
 
 model Category {
   id            String        @id @default(uuid())
-  name         String        @unique
+  name          String        @unique
   type          String // 'INCOME', 'EXPENSE', 'TRANSFER'
   subcategories Subcategory[]
   transactions  Transaction[]
@@ -45,18 +46,21 @@ model Transaction {
   importHash      String       @unique @map("import_hash")
   transactionDate DateTime     @map("transaction_date")
   accountId       String       @map("account_id")
-  account         Account      @relation(fields: [accountId], references: [id])
+  account         Account      @relation("TransferOrigin", fields: [accountId], references: [id])
   categoryId      String       @map("category_id")
   category        Category     @relation(fields: [categoryId], references: [id])
   subcategoryId   String?      @map("subcategory_id")
   subcategory     Subcategory? @relation(fields: [subcategoryId], references: [id])
   transactionType String       @map("transaction_type") // 'INCOME', 'EXPENSE', 'TRANSFER'
-  amount          Float
+  amount          Int
   currency        String
-  baseAmountUsd   Float        @map("base_amount_usd")
+  baseAmountUsd   Int          @map("base_amount_usd")
   note            String?
   description     String?
   createdAt       DateTime     @default(now()) @map("created_at")
+  destinationAccountId String?  @map("destination_account_id")
+  destinationAccount   Account? @relation("TransferDestination", fields: [destinationAccountId], references: [id])
+  isOpeningBalance     Boolean  @default(false) @map("is_opening_balance")
 
   @@map("transactions")
 }

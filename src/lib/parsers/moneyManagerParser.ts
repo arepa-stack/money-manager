@@ -155,24 +155,29 @@ export function parseMoneyManagerExcel(buffer: Buffer): ParsedTransaction[] {
       let type: TransactionType = 'EXPENSE';
       if (rawType.includes('ingreso')) {
         type = 'INCOME';
-      } else if (rawType.includes('transferencia') || rawType.includes('transfer')) {
+      } else if (
+        rawType.includes('transferencia') ||
+        rawType.includes('transfer') ||
+        rawType.includes('dinero gastado')
+      ) {
         type = 'TRANSFER';
-      } else if (rawType.includes('gasto') || rawType.includes('dinero gastado')) {
+      } else if (rawType.includes('gasto')) {
         type = 'EXPENSE';
       } else {
         // Safe default or check for unknown type
         type = 'EXPENSE';
       }
 
-      const amount = parseAmount(row[colMap.amount]);
+      // Keep raw float values for hash (idempotency: same source file always generates same hash)
+      const rawAmount = parseAmount(row[colMap.amount]);
       const currency = String(row[colMap.currency] || 'USD').trim().toUpperCase();
 
       // Read USD value if present, fallback to parsed amount if currency is USD, or default 0
-      let baseAmountUsd = 0;
+      let rawBaseAmountUsd = 0;
       if (colMap.usd !== -1 && row[colMap.usd] !== undefined && row[colMap.usd] !== null && row[colMap.usd] !== '') {
-        baseAmountUsd = parseAmount(row[colMap.usd]);
+        rawBaseAmountUsd = parseAmount(row[colMap.usd]);
       } else if (currency === 'USD') {
-        baseAmountUsd = amount;
+        rawBaseAmountUsd = rawAmount;
       }
 
       const note = colMap.note !== -1 && row[colMap.note] !== undefined && row[colMap.note] !== null
@@ -183,14 +188,19 @@ export function parseMoneyManagerExcel(buffer: Buffer): ParsedTransaction[] {
         ? String(row[colMap.description]).trim()
         : null;
 
+      // Hash uses the original float value from source (ensures stable idempotency across re-imports)
       const importHash = generateImportHash({
         date,
         accountName,
         categoryName,
-        amount,
+        amount: rawAmount,
         currency,
         note
       });
+
+      // Convert to integer cents (Money Pattern) AFTER hash generation
+      const amount = Math.round(rawAmount * 100);
+      const baseAmountUsd = Math.round(rawBaseAmountUsd * 100);
 
       if (seenHashes.has(importHash)) {
         continue;

@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
       result.push({
         month: monthKey,
-        balance: Number(runningTotal.toFixed(2)),
+        balance: runningTotal, // integer cents — no float rounding needed
       });
 
       // Move to next month

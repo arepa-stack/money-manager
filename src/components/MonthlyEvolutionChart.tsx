@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { formatCents, centsToDecimal } from '@/lib/moneyUtils';
 
 interface EvolutionPoint {
   month: string;
@@ -82,8 +83,8 @@ export default function MonthlyEvolutionChart() {
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
 
-  // Calculate dynamic scales based on visible window
-  const balances = visibleData.map(d => d.balance);
+  // Calculate dynamic scales based on visible window (convert cents to decimal for scale)
+  const balances = visibleData.map(d => centsToDecimal(d.balance));
   const minVal = Math.min(...balances, 0); 
   const maxVal = Math.max(...balances, 100) * 1.15; 
   const valRange = maxVal - minVal === 0 ? 100 : maxVal - minVal;
@@ -97,16 +98,16 @@ export default function MonthlyEvolutionChart() {
     return paddingTop + chartHeight - ((val - minVal) / valRange) * chartHeight;
   };
 
-  // Generate path lines
+  // Generate path lines (getY receives decimal values)
   let linePath = "";
   if (visibleData.length > 0) {
-    linePath = `M ${getX(0)} ${getY(visibleData[0].balance)}`;
+    linePath = `M ${getX(0)} ${getY(centsToDecimal(visibleData[0].balance))}`;
     for (let i = 1; i < visibleData.length; i++) {
-      linePath += ` L ${getX(i)} ${getY(visibleData[i].balance)}`;
+      linePath += ` L ${getX(i)} ${getY(centsToDecimal(visibleData[i].balance))}`;
     }
   }
 
-  // Close the area path for fill gradient
+  // Close the area path for fill gradient (getY receives decimal values)
   const areaPath = visibleData.length > 0
     ? `${linePath} L ${getX(visibleData.length - 1)} ${paddingTop + chartHeight} L ${getX(0)} ${paddingTop + chartHeight} Z`
     : "";
@@ -244,10 +245,12 @@ export default function MonthlyEvolutionChart() {
           {/* Interactive Hover Indicators & Dots */}
           {visibleData.map((pt, idx) => {
             const x = getX(idx);
-            const y = getY(pt.balance);
+
             const isHovered = hoveredIndex === idx;
 
             const rectWidth = visibleData.length <= 1 ? chartWidth : chartWidth / (visibleData.length - 1);
+            const decimalBalance = centsToDecimal(pt.balance);
+            const y = getY(decimalBalance);
 
             return (
               <g key={idx}>
@@ -303,7 +306,7 @@ export default function MonthlyEvolutionChart() {
           >
             <p className="text-slate-400 font-medium">{formatMonth(visibleData[hoveredIndex].month)}</p>
             <p className="font-extrabold text-indigo-300 mt-0.5">
-              ${visibleData[hoveredIndex].balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              ${formatCents(visibleData[hoveredIndex].balance)}
             </p>
           </div>
         )}

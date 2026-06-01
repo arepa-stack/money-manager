@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import MonthlyEvolutionChart from './MonthlyEvolutionChart';
+import { formatCents } from '@/lib/moneyUtils';
 
 interface AccountBalance {
   accountId: string;
@@ -20,6 +21,11 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
   const [balances, setBalances] = useState<AccountBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Reconcile states
+  const [reconcileAccountId, setReconcileAccountId] = useState<string | null>(null);
+  const [reconcileTarget, setReconcileTarget] = useState<string>('');
+  const [isReconciling, setIsReconciling] = useState(false);
 
   const fetchBalances = useCallback(async () => {
     setIsLoading(true);
@@ -42,6 +48,33 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
   useEffect(() => {
     fetchBalances();
   }, [fetchBalances]);
+
+  const handleReconcile = async () => {
+    if (!reconcileAccountId || !reconcileTarget) return;
+    
+    setIsReconciling(true);
+    try {
+      const targetBalance = parseFloat(reconcileTarget);
+      if (isNaN(targetBalance)) throw new Error('El monto ingresado no es válido');
+
+      const res = await fetch('/api/accounts/reconcile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: reconcileAccountId, targetBalance })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al conciliar');
+      
+      setReconcileAccountId(null);
+      setReconcileTarget('');
+      fetchBalances();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsReconciling(false);
+    }
+  };
 
   // Aggregated totals of all accounts
   const grandTotal = balances.reduce((acc, curr) => acc + curr.balance, 0);
@@ -127,9 +160,21 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
                     <h3 className="font-bold text-slate-300 text-lg group-hover:text-indigo-400 transition-colors">
                       {acc.accountName}
                     </h3>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-800/40 border border-slate-850 px-2 py-0.5 rounded">
-                      Cuenta
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReconcileAccountId(acc.accountId);
+                          setReconcileTarget((acc.balance / 100).toFixed(2));
+                        }}
+                        className="text-[10px] uppercase font-bold text-slate-400 hover:text-indigo-300 bg-slate-800/40 hover:bg-slate-800 border border-slate-850 px-2 py-0.5 rounded transition-all cursor-pointer"
+                      >
+                        Conciliar
+                      </button>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-800/40 border border-slate-850 px-2 py-0.5 rounded">
+                        Cuenta
+                      </span>
+                    </div>
                   </div>
                   
                   <div>
@@ -137,7 +182,7 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
                     <p className={`text-2xl font-black tracking-tight mt-1 ${
                       acc.balance > 0 ? 'text-emerald-400' : acc.balance < 0 ? 'text-rose-400' : 'text-slate-400'
                     }`}>
-                      {acc.balance >= 0 ? '+' : ''}${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {acc.balance >= 0 ? '+' : ''}${formatCents(acc.balance)}
                     </p>
                   </div>
                 </div>
@@ -145,11 +190,11 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
                 <div className="border-t border-slate-850 mt-6 pt-4 space-y-2 text-xs">
                   <div className="flex justify-between text-slate-400">
                     <span>Ingresos Totales:</span>
-                    <span className="text-emerald-500 font-medium">+${acc.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-emerald-500 font-medium">+${formatCents(acc.totalIncome)}</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
                     <span>Gastos/Transf.:</span>
-                    <span className="text-slate-300 font-medium">-${acc.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-slate-300 font-medium">-${formatCents(acc.totalExpense)}</span>
                   </div>
                   <div className="flex justify-between text-slate-500 border-t border-slate-850/50 pt-2 text-[10px]">
                     <span>Transacciones:</span>
@@ -171,8 +216,58 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
             </div>
             <div>
               <p className={`text-3xl font-black tracking-tight ${grandTotal >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
-                {grandTotal >= 0 ? '+' : ''}${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span className="text-sm font-semibold text-slate-500">USD</span>
+                {grandTotal >= 0 ? '+' : ''}${formatCents(grandTotal)} <span className="text-sm font-semibold text-slate-500">USD</span>
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Conciliación */}
+      {reconcileAccountId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
+            <h3 className="text-xl font-bold text-slate-200 mb-2">Ajuste de Saldo</h3>
+            <p className="text-xs text-slate-400 mb-6">
+              Ingresa el saldo real actual de tu banco. El sistema insertará un movimiento de ajuste automático.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Saldo Real (USD)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    value={reconcileTarget} 
+                    onChange={(e) => setReconcileTarget(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-7 pr-4 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-2">
+                <button 
+                  onClick={() => setReconcileAccountId(null)}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleReconcile}
+                  disabled={isReconciling}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  {isReconciling && (
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
+                  {isReconciling ? 'Ajustando...' : 'Confirmar Ajuste'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

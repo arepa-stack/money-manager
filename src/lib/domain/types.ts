@@ -5,9 +5,9 @@ export interface ParsedTransaction {
   accountName: string;
   categoryName: string;
   subcategoryName?: string | null;
-  amount: number; // Original amount (positive)
+  amount: number; // Amount in cents, integer (positive). e.g. $15.30 → 1530
   currency: string; // ISO Currency code
-  baseAmountUsd: number; // Base amount in USD
+  baseAmountUsd: number; // Base amount in USD cents, integer. e.g. $15.30 → 1530
   type: TransactionType;
   note?: string | null;
   description?: string | null;
@@ -26,9 +26,9 @@ export interface ImportAnalysisResult {
     accountName: string;
     categoryName: string;
     subcategoryName: string | null;
-    amount: number;
+    amount: number; // cents (integer)
     currency: string;
-    baseAmountUsd: number;
+    baseAmountUsd: number; // USD cents (integer)
     type: TransactionType;
     note: string | null;
     isDuplicate: boolean;

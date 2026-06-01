@@ -51,12 +51,19 @@ El sistema debe tratar cada transacción bajo un principio bimonetario:
 1.  **Moneda Original:** Conservar el `Importe` y `Moneda` en crudo. Esto garantiza que la exactitud histórica no se pierda.
 2.  **Moneda Base (USD):** Conservar el valor de la columna `USD` para reportes agregados y gráficas. Si la columna `USD` viene vacía en el futuro, el sistema debería idealmente buscar el tipo de cambio histórico, pero para la Fase 1, se asume que Money Manager lo provee.
 
-### 4.4. Clasificación de Tipos de Transacción (Categorization)
+### 4.4. Clasificación de Tipos de Transacción (Categorization) y Partida Doble
+
 El sistema debe normalizar los textos de `Ingreso/Gasto` a Enums del Dominio:
-*   `Gasto` / `Dinero gastado` -> `EXPENSE` (El valor debe ser tratado como negativo en cálculos de balance).
+*   `Gasto` -> `EXPENSE` (El valor debe ser tratado como negativo en cálculos de balance).
 *   `Ingreso` -> `INCOME` (Valor positivo).
-*   `Transferencia` -> `TRANSFER`. 
-*   *Nota sobre Transferencias:* Si Money Manager exporta transferencias como dos filas (un egreso y un ingreso), la importación debe tratarlas como transacciones separadas a menos que se desarrolle una lógica de conciliación avanzada (fuera del alcance inicial de la ingesta).
+*   `Transferencia` / `Dinero gastado` -> `TRANSFER` (Representa una transferencia entre cuentas).
+*   *Lógica de Partida Doble para Transferencias:* Para transacciones de tipo `TRANSFER`:
+    - La columna **Cuenta** original es el origen (`accountId`).
+    - La columna **Categoría** contiene el nombre de la cuenta de destino. Este nombre debe ser interceptado, crearse la cuenta en la base de datos si no existe (mediante un upsert masivo), y asociarse al campo `destinationAccountId` de la transacción.
+    - La transacción **nunca** debe insertarse en la tabla de categorías utilizando este string. En su lugar, se asocia internamente a una categoría de sistema única llamada `"Transferencia"` (tipo `TRANSFER`).
+    - El saldo de las cuentas se rige por la partida doble:
+      `Balance = SUM(INCOME) - SUM(EXPENSE) - SUM(TRANSFER_OUT) + SUM(TRANSFER_IN)`
+      donde `TRANSFER_OUT` representa la transferencia que sale de la cuenta de origen (`accountId`), y `TRANSFER_IN` representa la transferencia que ingresa a la cuenta de destino (`destinationAccountId`).
 
 ## 5. Diseño del Flujo de Trabajo (Import Workflow)
 

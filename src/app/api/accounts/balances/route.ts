@@ -11,6 +11,12 @@ export async function GET(request: NextRequest) {
             baseAmountUsd: true,
           },
         },
+        receivedTransfers: {
+          select: {
+            transactionType: true,
+            baseAmountUsd: true,
+          },
+        },
       },
     });
 
@@ -19,6 +25,7 @@ export async function GET(request: NextRequest) {
       let totalIncome = 0;
       let totalExpense = 0;
 
+      // Procesar transacciones como origen (INCOME, EXPENSE y transferencias de salida TRANSFER_OUT)
       account.transactions.forEach((tx) => {
         const amt = tx.baseAmountUsd;
         if (tx.transactionType === 'INCOME') {
@@ -28,9 +35,19 @@ export async function GET(request: NextRequest) {
           balance -= amt;
           totalExpense += amt;
         } else if (tx.transactionType === 'TRANSFER') {
-          // Outgoing transfer (treated as subtraction)
+          // Transferencia Saliente (TRANSFER_OUT)
           balance -= amt;
           totalExpense += amt;
+        }
+      });
+
+      // Procesar transferencias recibidas como destino (transferencias de entrada TRANSFER_IN)
+      account.receivedTransfers.forEach((tx) => {
+        const amt = tx.baseAmountUsd;
+        if (tx.transactionType === 'TRANSFER') {
+          // Transferencia Entrante (TRANSFER_IN)
+          balance += amt;
+          totalIncome += amt;
         }
       });
 
@@ -40,7 +57,7 @@ export async function GET(request: NextRequest) {
         balance,
         totalIncome,
         totalExpense,
-        transactionCount: account.transactions.length,
+        transactionCount: account.transactions.length + account.receivedTransfers.length,
       };
     });
 

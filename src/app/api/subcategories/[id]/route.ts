@@ -29,15 +29,20 @@ export async function PUT(
     }
 
     // Check uniqueness within the same category (excluding current)
-    const existing = await prisma.subcategory.findFirst({
+    // SQLite does not support mode: 'insensitive', use manual toLowerCase comparison
+    const siblings = await prisma.subcategory.findMany({
       where: {
         categoryId: current.categoryId,
-        name: { equals: trimmedName, mode: 'insensitive' },
         NOT: { id },
       },
+      select: { name: true },
     });
 
-    if (existing) {
+    const nameConflict = siblings.some(
+      (s) => s.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (nameConflict) {
       return NextResponse.json(
         {
           error: `Ya existe otra subcategoría con el nombre "${trimmedName}" en esta categoría.`,

@@ -19,8 +19,20 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
     }
 
     // 1. Gather all entity names
-    const accountNames = Array.from(new Set(parsedTransactions.map(t => t.accountName)));
-    const categoryNames = Array.from(new Set(parsedTransactions.map(t => t.categoryName)));
+    const accountNames = Array.from(
+      new Set([
+        ...parsedTransactions.map((t) => t.accountName),
+        ...parsedTransactions.filter((t) => t.type === 'TRANSFER').map((t) => t.categoryName),
+      ])
+    );
+    const categoryNames = Array.from(
+      new Set(parsedTransactions.filter((t) => t.type !== 'TRANSFER').map((t) => t.categoryName))
+    );
+    
+    // Asegurar la existencia de la categoría de sistema "Transferencia"
+    if (!categoryNames.includes('Transferencia')) {
+      categoryNames.push('Transferencia');
+    }
 
     // 2. Insert missing Accounts
     const existingAccounts = await tx.account.findMany({
@@ -52,6 +64,12 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
     
     if (missingCatNames.length > 0) {
       const missingCategoriesData = missingCatNames.map(name => {
+        if (name === 'Transferencia') {
+          return {
+            name,
+            type: 'TRANSFER'
+          };
+        }
         const firstTx = parsedTransactions.find(t => t.categoryName === name);
         return {
           name,
@@ -73,7 +91,7 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
     const subcategoryCombos = Array.from(
       new Map(
         parsedTransactions
-          .filter(t => !!t.subcategoryName)
+          .filter(t => t.type !== 'TRANSFER' && !!t.subcategoryName)
           .map(t => [`${t.categoryName}_${t.subcategoryName}`, { categoryName: t.categoryName, subcategoryName: t.subcategoryName! }])
       ).values()
     );
@@ -131,10 +149,19 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
     // 6. Map and insert transactions
     const transactionsData = newTransactions.map(t => {
       const accountId = accountMap.get(t.accountName)!;
-      const categoryId = categoryMap.get(t.categoryName)!;
+      
+      let categoryId: string;
+      let destinationAccountId: string | null = null;
       let subcategoryId: string | null = null;
-      if (t.subcategoryName) {
-        subcategoryId = subcategoryMap.get(`${categoryId}_${t.subcategoryName.toLowerCase()}`) || null;
+
+      if (t.type === 'TRANSFER') {
+        categoryId = categoryMap.get('Transferencia')!;
+        destinationAccountId = accountMap.get(t.categoryName) || null;
+      } else {
+        categoryId = categoryMap.get(t.categoryName)!;
+        if (t.subcategoryName) {
+          subcategoryId = subcategoryMap.get(`${categoryId}_${t.subcategoryName.toLowerCase()}`) || null;
+        }
       }
 
       return {
@@ -148,7 +175,8 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
         currency: t.currency,
         baseAmountUsd: t.baseAmountUsd,
         note: t.note || null,
-        description: t.description || null
+        description: t.description || null,
+        destinationAccountId
       };
     });
 
