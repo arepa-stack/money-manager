@@ -9,11 +9,12 @@ export async function POST(request: NextRequest) {
       prisma.subcategory.deleteMany({}),
       prisma.category.deleteMany({}),
       prisma.account.deleteMany({}),
+      prisma.auditLog.deleteMany({}),
     ]);
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Base de datos limpiada con éxito (transacciones, cuentas y categorías eliminadas)' 
+      message: 'Base de datos limpiada con éxito (transacciones, cuentas, categorías y auditoría eliminadas)' 
     });
   } catch (error: any) {
     console.error('Error al limpiar base de datos:', error);

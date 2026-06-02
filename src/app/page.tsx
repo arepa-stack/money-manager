@@ -15,6 +15,7 @@ import TransactionTable from '@/components/TransactionTable';
 import BcvRates from '@/components/BcvRates';
 import CategoryDistribution from '@/components/CategoryDistribution';
 import ConfirmModal from '@/components/ConfirmModal';
+import AuditTimeline from '@/components/AuditTimeline';
 
 interface Transaction {
   id: string;
@@ -44,7 +45,7 @@ const getLocalDateString = (date: Date) => {
 };
 
 export default function Dashboard() {
-  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv'>('balances');
+  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit'>('balances');
   const [importState, setImportState] = useState<'upload' | 'preview' | 'success'>('upload');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [initialModalType, setInitialModalType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER' | undefined>(undefined);
@@ -557,6 +558,17 @@ export default function Dashboard() {
           >
             Tasas de Cambio
             {currentTab === 'bcv' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
+            )}
+          </button>
+          <button
+            onClick={() => setCurrentTab('audit')}
+            className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
+              currentTab === 'audit' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Auditoría
+            {currentTab === 'audit' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
             )}
           </button>
@@ -1110,6 +1122,11 @@ export default function Dashboard() {
               fetchAccountsList();
               fetchTransactions();
             }} />
+          </div>
+        )}
+        {currentTab === 'audit' && (
+          <div className="animate-fade-in bg-slate-900/30 border border-slate-900 rounded-3xl p-6 backdrop-blur-md shadow-2xl">
+            <AuditTimeline />
           </div>
         )}
         {editingTransaction && (

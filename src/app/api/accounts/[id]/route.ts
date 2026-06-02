@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function PUT(
   request: NextRequest,
@@ -37,6 +38,14 @@ export async function PUT(
       },
     });
 
+    logAction({
+      action: 'UPDATE',
+      entityType: 'ACCOUNT',
+      entityId: updatedAccount.id,
+      entityName: updatedAccount.name,
+      details: { type: updatedAccount.type, currency: updatedAccount.currency },
+    });
+
     return NextResponse.json(updatedAccount);
   } catch (error: any) {
     console.error('Error al actualizar cuenta:', error);
@@ -71,8 +80,18 @@ export async function DELETE(
       );
     }
 
+    // Capturar nombre antes de eliminar para el log
+    const accountToDelete = await prisma.account.findUnique({ where: { id }, select: { name: true } });
+
     await prisma.account.delete({
       where: { id },
+    });
+
+    logAction({
+      action: 'DELETE',
+      entityType: 'ACCOUNT',
+      entityId: id,
+      entityName: accountToDelete?.name,
     });
 
     return NextResponse.json({ message: 'Cuenta eliminada con éxito' });

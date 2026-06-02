@@ -69,3 +69,15 @@ model Transaction {
   @@unique([provider, providerTransactionId])
   @@map("transactions")
 }
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // 'CREATE' | 'UPDATE' | 'DELETE' | 'IMPORT'
+  entityType String   // 'ACCOUNT' | 'CATEGORY' | 'SUBCATEGORY' | 'TRANSACTION' | 'SYSTEM'
+  entityId   String?  // ID de la entidad (puede ser null en eventos de SYSTEM)
+  entityName String?  // Nombre legible en el momento de la acción
+  details    String?  // JSON serializado con contexto adicional (montos, campos cambiados, etc.)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}

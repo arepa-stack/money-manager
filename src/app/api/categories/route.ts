@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function GET() {
   try {
@@ -61,6 +62,14 @@ export async function POST(request: Request) {
         type,
         budgetUsd: budgetUsd !== undefined && budgetUsd !== null ? Math.round(Number(budgetUsd) * 100) : null,
       }
+    });
+
+    logAction({
+      action: 'CREATE',
+      entityType: 'CATEGORY',
+      entityId: newCategory.id,
+      entityName: newCategory.name,
+      details: { type: newCategory.type, budgetUsd: newCategory.budgetUsd },
     });
 
     return NextResponse.json(newCategory, { status: 201 });

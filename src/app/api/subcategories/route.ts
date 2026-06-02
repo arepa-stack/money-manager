@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +48,14 @@ export async function POST(request: NextRequest) {
         categoryId,
         name: name.trim(),
       },
+    });
+
+    logAction({
+      action: 'CREATE',
+      entityType: 'SUBCATEGORY',
+      entityId: newSubcategory.id,
+      entityName: newSubcategory.name,
+      details: { categoryId, categoryName: category.name },
     });
 
     return NextResponse.json(newSubcategory, { status: 201 });

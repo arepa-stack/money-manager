@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function PUT(
   request: NextRequest,
@@ -87,6 +88,25 @@ export async function PUT(
       }
     });
 
+    logAction({
+      action: 'UPDATE',
+      entityType: 'TRANSACTION',
+      entityId: updatedTransaction.id,
+      entityName: `${updatedTransaction.transactionType} ${updatedTransaction.currency} ${(updatedTransaction.amount / 100).toFixed(2)}`,
+      details: {
+        type: updatedTransaction.transactionType,
+        amount: updatedTransaction.amount / 100,
+        currency: updatedTransaction.currency,
+        baseAmountUsd: updatedTransaction.baseAmountUsd / 100,
+        account: updatedTransaction.account?.name,
+        category: updatedTransaction.category?.name,
+        subcategory: updatedTransaction.subcategory?.name,
+        destinationAccount: updatedTransaction.destinationAccount?.name,
+        note: updatedTransaction.note,
+        date: updatedTransaction.transactionDate,
+      },
+    });
+
     return NextResponse.json(updatedTransaction);
   } catch (error: any) {
     console.error('Error al actualizar transacción:', error);
@@ -108,8 +128,31 @@ export async function DELETE(
       return NextResponse.json({ error: 'El ID de la transacción es requerido' }, { status: 400 });
     }
 
+    const txToDelete = await prisma.transaction.findUnique({
+      where: { id },
+      include: { account: { select: { name: true } }, category: { select: { name: true } } },
+    });
+
     await prisma.transaction.delete({
       where: { id }
+    });
+
+    logAction({
+      action: 'DELETE',
+      entityType: 'TRANSACTION',
+      entityId: id,
+      entityName: txToDelete
+        ? `${txToDelete.transactionType} ${txToDelete.currency} ${(txToDelete.amount / 100).toFixed(2)}`
+        : id,
+      details: txToDelete
+        ? {
+            amount: txToDelete.amount / 100,
+            currency: txToDelete.currency,
+            account: txToDelete.account?.name,
+            category: txToDelete.category?.name,
+            date: txToDelete.transactionDate,
+          }
+        : undefined,
     });
 
     return NextResponse.json({ message: 'Transacción eliminada correctamente' });

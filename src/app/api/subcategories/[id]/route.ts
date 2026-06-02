@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function PUT(
   request: NextRequest,
@@ -56,6 +57,14 @@ export async function PUT(
       data: { name: trimmedName },
     });
 
+    logAction({
+      action: 'UPDATE',
+      entityType: 'SUBCATEGORY',
+      entityId: updated.id,
+      entityName: updated.name,
+      details: { categoryId: current.categoryId, previousName: current.name },
+    });
+
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error('Error al actualizar subcategoría:', error);
@@ -85,8 +94,21 @@ export async function DELETE(
       );
     }
 
+    const subcatToDelete = await prisma.subcategory.findUnique({
+      where: { id },
+      include: { category: { select: { name: true } } },
+    });
+
     await prisma.subcategory.delete({
       where: { id },
+    });
+
+    logAction({
+      action: 'DELETE',
+      entityType: 'SUBCATEGORY',
+      entityId: id,
+      entityName: subcatToDelete?.name,
+      details: { categoryId: subcatToDelete?.categoryId, categoryName: subcatToDelete?.category?.name },
     });
 
     return NextResponse.json({ message: 'Subcategoría eliminada con éxito' });

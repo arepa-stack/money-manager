@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeImport } from '@/lib/use-cases/ExecuteImportUseCase';
+import { logAction } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,23 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const result = await executeImport(buffer, provider, reconciliations);
+
+    logAction({
+      action: 'IMPORT',
+      entityType: 'SYSTEM',
+      entityName: `Importación ${provider}`,
+      details: {
+        provider,
+        totalParsed: result.totalParsed,
+        totalInserted: result.totalInserted,
+        totalSkipped: result.totalSkipped,
+        newAccounts: result.newAccountsCreatedCount,
+        newCategories: result.newCategoriesCreatedCount,
+        newSubcategories: result.newSubcategoriesCreatedCount,
+        fileName: file.name,
+      },
+    });
+
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error en /api/import/commit:', error);

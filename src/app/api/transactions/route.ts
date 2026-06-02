@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -153,6 +154,25 @@ export async function POST(request: NextRequest) {
         subcategory: true,
         destinationAccount: true
       }
+    });
+
+    logAction({
+      action: 'CREATE',
+      entityType: 'TRANSACTION',
+      entityId: newTransaction.id,
+      entityName: `${newTransaction.transactionType} ${newTransaction.currency} ${(newTransaction.amount / 100).toFixed(2)}`,
+      details: {
+        type: newTransaction.transactionType,
+        amount: newTransaction.amount / 100,
+        currency: newTransaction.currency,
+        baseAmountUsd: newTransaction.baseAmountUsd / 100,
+        account: newTransaction.account?.name,
+        category: newTransaction.category?.name,
+        subcategory: newTransaction.subcategory?.name,
+        destinationAccount: newTransaction.destinationAccount?.name,
+        note: newTransaction.note,
+        date: newTransaction.transactionDate,
+      },
     });
 
     return NextResponse.json(newTransaction, { status: 201 });

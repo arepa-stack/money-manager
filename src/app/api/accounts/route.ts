@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logAction } from '@/lib/audit';
 
 export async function GET() {
   try {
@@ -46,6 +47,14 @@ export async function POST(request: NextRequest) {
         type: type || 'CASH',
         currency: currency || 'USD',
       },
+    });
+
+    logAction({
+      action: 'CREATE',
+      entityType: 'ACCOUNT',
+      entityId: newAccount.id,
+      entityName: newAccount.name,
+      details: { type: newAccount.type, currency: newAccount.currency },
     });
 
     return NextResponse.json(newAccount, { status: 201 });
