@@ -14,6 +14,7 @@ interface Category {
   id: string;
   name: string;
   type: string; // 'INCOME' | 'EXPENSE' | 'TRANSFER'
+  budgetUsd?: number | null;
   subcategories: Subcategory[];
 }
 
@@ -113,11 +114,14 @@ function InlineEdit({
 function SubcategoryRow({
   sub,
   onRenamed,
+  onDeleted,
 }: {
   sub: Subcategory;
   onRenamed: (id: string, newName: string) => void;
+  onDeleted: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSave = async (newName: string): Promise<string | null> => {
     const res = await fetch(`/api/subcategories/${sub.id}`, {
@@ -132,9 +136,30 @@ function SubcategoryRow({
     return null;
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar la subcategoría "${sub.name}"?`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/subcategories/${sub.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al eliminar la subcategoría');
+      } else {
+        onDeleted(sub.id);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error en la conexión al eliminar.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="flex items-center gap-3 pl-4 py-2 group/sub">
-      <span className="w-1 h-1 rounded-full bg-slate-600 shrink-0" />
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-600 shrink-0" />
       {editing ? (
         <InlineEdit
           initialValue={sub.name}
@@ -143,16 +168,28 @@ function SubcategoryRow({
         />
       ) : (
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm text-slate-400 truncate">{sub.name}</span>
-          <button
-            onClick={() => setEditing(true)}
-            className="opacity-0 group-hover/sub:opacity-100 transition-opacity ml-auto shrink-0 text-slate-500 hover:text-indigo-400 p-1 rounded cursor-pointer"
-            title="Editar subcategoría"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-            </svg>
-          </button>
+          <span className="text-sm text-slate-300 truncate">{sub.name}</span>
+          <div className="opacity-0 group-hover/sub:opacity-100 transition-opacity ml-auto shrink-0 flex items-center gap-1">
+            <button
+              onClick={() => setEditing(true)}
+              className="text-slate-500 hover:text-indigo-400 p-1 rounded cursor-pointer"
+              title="Editar subcategoría"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+              </svg>
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-slate-500 hover:text-rose-400 p-1 rounded cursor-pointer disabled:opacity-50"
+              title="Eliminar subcategoría"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 9m-4.72 0L9 9m5.63-3c.18-1.55-1.1-2.9-2.75-2.903-1.65-.003-2.93 1.34-2.75 2.903m12 .138-1.598 13.518c-.113 1.156-1.1 2.03-2.251 2.03H7.212c-1.152 0-2.138-.874-2.253-2.03L3 5.968m15.549-1.2h-11.23" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -163,101 +200,302 @@ function SubcategoryRow({
 
 function CategoryCard({
   category,
-  onCategoryRenamed,
+  spendingUsd = 0,
+  onCategoryUpdated,
+  onCategoryDeleted,
+  onSubcategoryAdded,
   onSubcategoryRenamed,
+  onSubcategoryDeleted,
 }: {
   category: Category;
-  onCategoryRenamed: (id: string, newName: string) => void;
+  spendingUsd?: number;
+  onCategoryUpdated: (id: string, name: string, type: string, budgetUsd: number | null) => void;
+  onCategoryDeleted: (id: string) => void;
+  onSubcategoryAdded: (catId: string, sub: Subcategory) => void;
   onSubcategoryRenamed: (catId: string, subId: string, newName: string) => void;
+  onSubcategoryDeleted: (catId: string, subId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editingCat, setEditingCat] = useState(false);
+  const [savingCat, setSavingCat] = useState(false);
+  const [tempName, setTempName] = useState(category.name);
+  const [tempBudget, setTempBudget] = useState(
+    category.budgetUsd !== null && category.budgetUsd !== undefined
+      ? (category.budgetUsd / 100).toString()
+      : ''
+  );
+  const [deletingCat, setDeletingCat] = useState(false);
+  const [newSubName, setNewSubName] = useState('');
+  const [addingSub, setAddingSub] = useState(false);
+  const [subError, setSubError] = useState<string | null>(null);
+
   const meta = TYPE_META[category.type] ?? TYPE_META.EXPENSE;
 
-  const handleCatSave = async (newName: string): Promise<string | null> => {
-    const res = await fetch(`/api/categories/${category.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
-    });
-    const data = await res.json();
-    if (!res.ok) return data.error || 'Error al guardar.';
-    onCategoryRenamed(category.id, data.name);
-    setEditingCat(false);
-    return null;
+  const handleCatSave = async () => {
+    if (!tempName.trim()) return;
+    setSavingCat(true);
+    try {
+      const budgetVal = tempBudget.trim() ? parseFloat(tempBudget.trim()) : null;
+      const res = await fetch(`/api/categories/${category.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: tempName.trim(),
+          type: category.type,
+          budgetUsd: budgetVal !== null && !isNaN(budgetVal) ? budgetVal : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al guardar la categoría.');
+      } else {
+        onCategoryUpdated(category.id, data.name, data.type, data.budgetUsd);
+        setEditingCat(false);
+      }
+    } catch (err) {
+      alert('Error al conectar con el servidor.');
+    } finally {
+      setSavingCat(false);
+    }
   };
 
-  return (
-    <div className={`rounded-2xl border ${meta.border} bg-slate-900/30 backdrop-blur-sm overflow-hidden transition-all`}>
-      {/* Header row */}
-      <div className="flex items-center gap-3 px-5 py-4 group/cat">
-        {/* Expand toggle */}
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer p-0.5"
-          aria-label={open ? 'Colapsar' : 'Expandir'}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2.5}
-            stroke="currentColor"
-            className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-          </svg>
-        </button>
+  const handleCatDelete = async () => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar la categoría "${category.name}" y todas sus subcategorías?`)) return;
+    setDeletingCat(true);
+    try {
+      const res = await fetch(`/api/categories/${category.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al eliminar la categoría');
+      } else {
+        onCategoryDeleted(category.id);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error en la conexión al eliminar la categoría.');
+    } finally {
+      setDeletingCat(false);
+    }
+  };
 
-        {/* Category name or edit input */}
-        <div className="flex-1 min-w-0">
-          {editingCat ? (
-            <InlineEdit
-              initialValue={category.name}
-              onSave={handleCatSave}
-              onCancel={() => setEditingCat(false)}
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
-              <span className="font-semibold text-slate-100 text-sm truncate">{category.name}</span>
-              <button
-                onClick={() => setEditingCat(true)}
-                className="opacity-0 group-hover/cat:opacity-100 transition-opacity ml-1 shrink-0 text-slate-500 hover:text-indigo-400 p-1 rounded cursor-pointer"
-                title="Editar categoría"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                </svg>
-              </button>
-            </div>
-          )}
+  const handleAddSubcategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubName.trim()) return;
+    setAddingSub(true);
+    setSubError(null);
+    try {
+      const res = await fetch('/api/subcategories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: category.id, name: newSubName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubError(data.error || 'Error al crear la subcategoría');
+      } else {
+        onSubcategoryAdded(category.id, data);
+        setNewSubName('');
+      }
+    } catch (err) {
+      setSubError('Error al conectar con el servidor.');
+    } finally {
+      setAddingSub(false);
+    }
+  };
+
+  const startEdit = () => {
+    setTempName(category.name);
+    setTempBudget(
+      category.budgetUsd !== null && category.budgetUsd !== undefined
+        ? (category.budgetUsd / 100).toString()
+        : ''
+    );
+    setEditingCat(true);
+  };
+
+  // Cálculo de barra de presupuesto
+  const budgetCents = category.budgetUsd || 0;
+  const showBudget = category.type === 'EXPENSE' && budgetCents > 0;
+  const percent = showBudget ? Math.min(Math.round((spendingUsd / budgetCents) * 100), 200) : 0;
+  const isOver = percent > 100;
+  
+  // Clases de color para barra
+  const barColorClass = percent > 100 
+    ? 'bg-rose-500 animate-pulse' 
+    : percent > 80 
+      ? 'bg-amber-500' 
+      : 'bg-emerald-500';
+
+  return (
+    <div className={`rounded-2xl border ${meta.border} bg-slate-900/30 backdrop-blur-sm overflow-hidden transition-all shadow-md`}>
+      {/* Header row */}
+      <div className="flex flex-col gap-2.5 px-5 py-4">
+        <div className="flex items-center gap-3 group/cat">
+          {/* Expand toggle */}
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer p-0.5"
+            aria-label={open ? 'Colapsar' : 'Expandir'}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2.5}
+              stroke="currentColor"
+              className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          </button>
+
+          {/* Category name or edit input */}
+          <div className="flex-1 min-w-0">
+            {editingCat ? (
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                <input
+                  autoFocus
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1 text-sm text-slate-100 outline-none"
+                  placeholder="Nombre categoría"
+                />
+                {category.type === 'EXPENSE' && (
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={tempBudget}
+                    onChange={(e) => setTempBudget(e.target.value)}
+                    className="w-28 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1 text-sm text-slate-100 outline-none"
+                    placeholder="Pto. mensual"
+                  />
+                )}
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={handleCatSave}
+                    disabled={savingCat || !tempName.trim()}
+                    className="px-3 py-1.5 text-xs font-semibold bg-indigo-650 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg cursor-pointer transition-colors"
+                  >
+                    {savingCat ? '...' : 'Guardar'}
+                  </button>
+                  <button
+                    onClick={() => setEditingCat(false)}
+                    className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-350 rounded-lg cursor-pointer transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
+                <span className="font-semibold text-slate-100 text-sm truncate">{category.name}</span>
+                
+                {category.type === 'EXPENSE' && (
+                  <span className="text-[10px] text-slate-500 font-bold bg-slate-950/40 px-2 py-0.5 rounded border border-slate-900 ml-1">
+                    {category.budgetUsd 
+                      ? `Pto: $${(category.budgetUsd / 100).toFixed(0)}` 
+                      : 'Sin presupuesto'}
+                  </span>
+                )}
+
+                <div className="opacity-0 group-hover/cat:opacity-100 transition-opacity ml-2 shrink-0 flex items-center gap-0.5">
+                  <button
+                    onClick={startEdit}
+                    className="text-slate-500 hover:text-indigo-400 p-1 rounded cursor-pointer"
+                    title="Editar categoría"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCatDelete}
+                    disabled={deletingCat}
+                    className="text-slate-500 hover:text-rose-400 p-1 rounded cursor-pointer disabled:opacity-50"
+                    title="Eliminar categoría"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 9m-4.72 0L9 9m5.63-3c.18-1.55-1.1-2.9-2.75-2.903-1.65-.003-2.93 1.34-2.75 2.903m12 .138-1.598 13.518c-.113 1.156-1.1 2.03-2.251 2.03H7.212c-1.152 0-2.138-.874-2.253-2.03L3 5.968m15.549-1.2h-11.23" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Subcategory count pill */}
+          <span className={`shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${meta.border} ${meta.color} bg-transparent`}>
+            {category.subcategories.length} sub
+          </span>
         </div>
 
-        {/* Subcategory count pill */}
-        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.border} ${meta.color} bg-transparent`}>
-          {category.subcategories.length} sub
-        </span>
+        {/* Budget Progress Bar */}
+        {showBudget && !editingCat && (
+          <div className="pl-5 space-y-1">
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-400 font-medium">
+                Gasto este mes: <strong className="text-slate-200">${(spendingUsd / 100).toFixed(2)}</strong> de <strong className="text-slate-200">${(budgetCents / 100).toFixed(0)}</strong>
+              </span>
+              <span className={`font-bold ${isOver ? 'text-rose-400' : 'text-slate-400'}`}>
+                {percent}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Subcategories collapsible */}
-      {open && category.subcategories.length > 0 && (
-        <div className="border-t border-slate-800/60 px-4 py-2 space-y-0.5">
-          {category.subcategories.map((sub) => (
-            <SubcategoryRow
-              key={sub.id}
-              sub={sub}
-              onRenamed={(subId, newName) =>
-                onSubcategoryRenamed(category.id, subId, newName)
-              }
-            />
-          ))}
-        </div>
-      )}
+      {open && (
+        <div className="border-t border-slate-800/60 px-5 py-3 space-y-2 bg-slate-950/20">
+          {category.subcategories.length > 0 ? (
+            <div className="space-y-0.5">
+              {category.subcategories.map((sub) => (
+                <SubcategoryRow
+                  key={sub.id}
+                  sub={sub}
+                  onRenamed={(subId, newName) =>
+                    onSubcategoryRenamed(category.id, subId, newName)
+                  }
+                  onDeleted={(subId) => onSubcategoryDeleted(category.id, subId)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-slate-600 italic pl-4 py-1">
+              Sin subcategorías
+            </div>
+          )}
 
-      {open && category.subcategories.length === 0 && (
-        <div className="border-t border-slate-800/60 px-5 py-3 text-xs text-slate-600 italic">
-          Sin subcategorías
+          {/* Form to add subcategory */}
+          <form onSubmit={handleAddSubcategory} className="pt-2 pl-4 border-t border-slate-800/30 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Nueva subcategoría..."
+                value={newSubName}
+                onChange={(e) => setNewSubName(e.target.value)}
+                disabled={addingSub}
+                className="flex-1 max-w-[240px] bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-200 outline-none transition-all"
+              />
+              <button
+                type="submit"
+                disabled={addingSub || !newSubName.trim()}
+                className="px-2.5 py-1 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg cursor-pointer transition-colors"
+              >
+                {addingSub ? 'Añadiendo...' : 'Añadir'}
+              </button>
+            </div>
+            {subError && <p className="text-[10px] text-rose-400 mt-1">{subError}</p>}
+          </form>
         </div>
       )}
     </div>
@@ -266,20 +504,40 @@ function CategoryCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CategoryManager() {
+interface CategoryManagerProps {
+  onChange?: () => void;
+}
+
+export default function CategoryManager({ onChange }: CategoryManagerProps) {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [spendings, setSpendings] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  // Form states for new Category
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatType, setNewCatType] = useState('EXPENSE');
+  const [newCatBudget, setNewCatBudget] = useState('');
+  const [creatingCat, setCreatingCat] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/categories');
-      if (!res.ok) throw new Error('Error al obtener categorías');
-      const data: Category[] = await res.json();
-      setCategories(data);
+      const catRes = await fetch('/api/categories');
+      if (!catRes.ok) throw new Error('Error al obtener categorías');
+      const catData: Category[] = await catRes.json();
+      setCategories(catData);
+
+      // Cargar gastos mensuales para presupuestos
+      const spendRes = await fetch('/api/categories/spending');
+      if (spendRes.ok) {
+        const spendData = await spendRes.json();
+        setSpendings(spendData);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -291,10 +549,44 @@ export default function CategoryManager() {
     load();
   }, [load]);
 
-  const handleCategoryRenamed = (id: string, newName: string) => {
+  const handleCategoryCreated = (newCat: Category) => {
+    setCategories((prev) => {
+      const next = [...prev, { ...newCat, subcategories: [] }];
+      // Sort: type asc, then name asc
+      return next.sort((a, b) => {
+        if (a.type !== b.type) return a.type.localeCompare(b.type);
+        return a.name.localeCompare(b.name);
+      });
+    });
+    onChange?.();
+  };
+
+  const handleCategoryUpdated = (id: string, newName: string, type: string, budgetUsd: number | null) => {
     setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
+      prev.map((c) => (c.id === id ? { ...c, name: newName, type, budgetUsd } : c))
     );
+    onChange?.();
+  };
+
+  const handleCategoryDeleted = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    onChange?.();
+  };
+
+  const handleSubcategoryAdded = (catId: string, sub: Subcategory) => {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === catId
+          ? {
+              ...c,
+              subcategories: [...c.subcategories, sub].sort((a, b) =>
+                a.name.localeCompare(b.name)
+              ),
+            }
+          : c
+      )
+    );
+    onChange?.();
   };
 
   const handleSubcategoryRenamed = (catId: string, subId: string, newName: string) => {
@@ -310,6 +602,53 @@ export default function CategoryManager() {
           : c
       )
     );
+    onChange?.();
+  };
+
+  const handleSubcategoryDeleted = (catId: string, subId: string) => {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === catId
+          ? {
+              ...c,
+              subcategories: c.subcategories.filter((s) => s.id !== subId),
+            }
+          : c
+      )
+    );
+    onChange?.();
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    setCreatingCat(true);
+    setCreateError(null);
+    try {
+      const budgetVal = newCatBudget.trim() ? parseFloat(newCatBudget.trim()) : null;
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCatName.trim(),
+          type: newCatType,
+          budgetUsd: budgetVal !== null && !isNaN(budgetVal) ? budgetVal : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateError(data.error || 'Error al crear la categoría');
+      } else {
+        handleCategoryCreated(data);
+        setNewCatName('');
+        setNewCatBudget('');
+        setShowCreateForm(false);
+      }
+    } catch (err) {
+      setCreateError('Error al conectar con el servidor.');
+    } finally {
+      setCreatingCat(false);
+    }
   };
 
   // Group categories by type
@@ -345,13 +684,22 @@ export default function CategoryManager() {
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-slate-200">Gestión de Categorías</h2>
             <p className="text-xs text-slate-500">
-              Edita el nombre de categorías y subcategorías. Los cambios se reflejan en todo el historial automáticamente gracias a las relaciones por ID.
+              Crea, edita o elimina categorías y subcategorías. Los cambios se reflejarán inmediatamente en todo el sistema.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-semibold text-slate-400 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
               {totalCategories} categorías · {totalSubcategories} subcategorías
             </span>
+            <button
+              onClick={() => setShowCreateForm((show) => !show)}
+              className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Nueva Categoría
+            </button>
             <button
               onClick={load}
               className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-900 hover:border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
@@ -364,6 +712,71 @@ export default function CategoryManager() {
             </button>
           </div>
         </div>
+
+        {/* Expandable Form to create category */}
+        {showCreateForm && (
+          <form onSubmit={handleCreateCategory} className="mt-5 pt-5 border-t border-slate-800/50 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end animate-slide-down">
+            <div className="sm:col-span-2 w-full space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-1">Nombre Categoría</label>
+              <input
+                type="text"
+                placeholder="Ej. Restaurantes, Sueldo..."
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                disabled={creatingCat}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none transition-all"
+              />
+            </div>
+            
+            <div className="w-full space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-1">Tipo de Flujo</label>
+              <select
+                value={newCatType}
+                onChange={(e) => setNewCatType(e.target.value)}
+                disabled={creatingCat}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-sm text-slate-350 focus:outline-none transition-all cursor-pointer"
+              >
+                <option value="EXPENSE">Gastos (egreso)</option>
+                <option value="INCOME">Ingresos (entrada)</option>
+                <option value="TRANSFER">Transferencia</option>
+              </select>
+            </div>
+
+            <div className="w-full flex gap-2 items-end">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-1">
+                  Pto. Mensual (USD)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="150.00 (Opcional)"
+                  value={newCatBudget}
+                  onChange={(e) => setNewCatBudget(e.target.value)}
+                  disabled={creatingCat}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  type="submit"
+                  disabled={creatingCat || !newCatName.trim()}
+                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-md shadow-indigo-600/10 h-[40px] shrink-0"
+                >
+                  {creatingCat ? '...' : 'Crear'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition-all cursor-pointer h-[40px] shrink-0"
+                >
+                  Ocultar
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
 
         {/* Search */}
         <div className="mt-4 relative">
@@ -396,7 +809,7 @@ export default function CategoryManager() {
 
       {!loading && !error && categories.length === 0 && (
         <div className="py-16 text-center text-slate-500 text-sm">
-          No hay categorías en la base de datos. Importa un extracto primero.
+          No hay categorías creadas. ¡Crea una nueva arriba!
         </div>
       )}
 
@@ -428,8 +841,12 @@ export default function CategoryManager() {
                     <CategoryCard
                       key={cat.id}
                       category={cat}
-                      onCategoryRenamed={handleCategoryRenamed}
+                      spendingUsd={spendings[cat.id] || 0}
+                      onCategoryUpdated={handleCategoryUpdated}
+                      onCategoryDeleted={handleCategoryDeleted}
+                      onSubcategoryAdded={handleSubcategoryAdded}
                       onSubcategoryRenamed={handleSubcategoryRenamed}
+                      onSubcategoryDeleted={handleSubcategoryDeleted}
                     />
                   ))}
                 </div>

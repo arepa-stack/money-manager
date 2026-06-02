@@ -96,3 +96,28 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json({ error: 'El ID de la transacción es requerido' }, { status: 400 });
+    }
+
+    await prisma.transaction.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ message: 'Transacción eliminada correctamente' });
+  } catch (error: any) {
+    console.error('Error al eliminar transacción:', error);
+    return NextResponse.json(
+      { error: error.message || 'Error interno al eliminar la transacción' },
+      { status: 500 }
+    );
+  }
+}

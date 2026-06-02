@@ -65,3 +65,36 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    // Verificar si tiene transacciones asociadas
+    const transactionCount = await prisma.transaction.count({
+      where: { subcategoryId: id },
+    });
+
+    if (transactionCount > 0) {
+      return NextResponse.json(
+        { error: 'No se puede eliminar la subcategoría porque contiene transacciones asociadas' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.subcategory.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ message: 'Subcategoría eliminada con éxito' });
+  } catch (error: any) {
+    console.error('Error al eliminar subcategoría:', error);
+    return NextResponse.json(
+      { error: error.message || 'Error interno al eliminar la subcategoría' },
+      { status: 500 }
+    );
+  }
+}

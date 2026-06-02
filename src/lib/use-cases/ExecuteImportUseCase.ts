@@ -1,11 +1,16 @@
 import prisma from '../prisma';
-import { parseMoneyManagerExcel } from '../parsers/moneyManagerParser';
+import { getProvider } from '../providers';
 import { ImportExecuteResult } from '../domain/types';
 
-export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteResult> {
+export async function executeImport(
+  fileBuffer: Buffer, 
+  providerName: string = 'MONEY_MANAGER',
+  reconciliations: Record<string, string> = {} // maps importHash -> manualTransactionId
+): Promise<ImportExecuteResult> {
   // Execute everything within a single transaction
   return prisma.$transaction(async (tx) => {
-    const parsedTransactions = parseMoneyManagerExcel(fileBuffer);
+    const provider = getProvider(providerName);
+    const parsedTransactions = provider.parse(fileBuffer);
     
     if (parsedTransactions.length === 0) {
       return {
@@ -136,18 +141,44 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
       allSubcategories.map(s => [`${s.categoryId}_${s.name.toLowerCase()}`, s.id])
     );
 
-    // 5. Detect and omit duplicates
+    // 5. Detect and omit duplicates (already in DB with the exact same provider and providerTransactionId)
     const importHashes = parsedTransactions.map(t => t.importHash);
     const existingTransactions = await tx.transaction.findMany({
-      where: { importHash: { in: importHashes } },
-      select: { importHash: true }
+      where: {
+        provider: provider.name,
+        providerTransactionId: { in: importHashes }
+      },
+      select: { providerTransactionId: true }
     });
-    const existingHashSet = new Set(existingTransactions.map(t => t.importHash));
+    const existingHashSet = new Set(existingTransactions.map(t => t.providerTransactionId));
 
-    const newTransactions = parsedTransactions.filter(t => !existingHashSet.has(t.importHash));
+    // Filter out rows that are duplicates
+    const nonDuplicateTransactions = parsedTransactions.filter(t => !existingHashSet.has(t.importHash));
 
-    // 6. Map and insert transactions
-    const transactionsData = newTransactions.map(t => {
+    let reconciliationsCount = 0;
+    
+    // Split between those that match a manual transaction vs brand new insertions
+    const transactionsToInsert: typeof parsedTransactions = [];
+    
+    for (const t of nonDuplicateTransactions) {
+      const manualId = reconciliations[t.importHash];
+      if (manualId) {
+        // Ejecutar reconciliación: Modificar la manual para asociarla al provider y asignarle el hash
+        await tx.transaction.update({
+          where: { id: manualId },
+          data: {
+            provider: provider.name,
+            providerTransactionId: t.importHash
+          }
+        });
+        reconciliationsCount++;
+      } else {
+        transactionsToInsert.push(t);
+      }
+    }
+
+    // 6. Map and insert brand new transactions
+    const transactionsData = transactionsToInsert.map(t => {
       const accountId = accountMap.get(t.accountName)!;
       
       let categoryId: string;
@@ -165,7 +196,8 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
       }
 
       return {
-        importHash: t.importHash,
+        provider: provider.name,
+        providerTransactionId: t.importHash,
         transactionDate: t.date,
         accountId,
         categoryId,
@@ -230,8 +262,8 @@ export async function executeImport(fileBuffer: Buffer): Promise<ImportExecuteRe
 
     return {
       totalParsed: parsedTransactions.length,
-      totalInserted: transactionsData.length,
-      totalSkipped: parsedTransactions.length - transactionsData.length,
+      totalInserted: transactionsData.length + reconciliationsCount,
+      totalSkipped: parsedTransactions.length - (transactionsData.length + reconciliationsCount),
       newAccountsCreatedCount: missingAccNames.length,
       newCategoriesCreatedCount: missingCatNames.length,
       newSubcategoriesCreatedCount: subcategoriesToCreate.length,

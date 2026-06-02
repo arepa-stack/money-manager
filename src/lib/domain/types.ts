@@ -32,6 +32,12 @@ export interface ImportAnalysisResult {
     type: TransactionType;
     note: string | null;
     isDuplicate: boolean;
+    importHash: string;
+    matchCandidate?: {
+      id: string;
+      date: string;
+      note: string | null;
+    } | null;
   }[];
 }
 

@@ -7,6 +7,8 @@ import { formatCents } from '@/lib/moneyUtils';
 interface AccountBalance {
   accountId: string;
   accountName: string;
+  accountType: string;
+  accountCurrency: string;
   balance: number;
   totalIncome: number;
   totalExpense: number;
@@ -15,9 +17,10 @@ interface AccountBalance {
 
 interface AccountBalancesProps {
   onSelectAccount?: (accountId: string) => void;
+  onQuickAction?: (actionType: 'INCOME' | 'EXPENSE' | 'TRANSFER') => void;
 }
 
-export default function AccountBalances({ onSelectAccount }: AccountBalancesProps) {
+export default function AccountBalances({ onSelectAccount, onQuickAction }: AccountBalancesProps) {
   const [balances, setBalances] = useState<AccountBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +83,39 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
     }
   };
 
-  // Aggregated totals of all accounts
-  const grandTotal = balances.reduce((acc, curr) => acc + curr.balance, 0);
+  // Cuentas de tipo pasivo (tarjeta de crédito) restan del patrimonio neto
+  const grandTotal = balances.reduce((acc, curr) => {
+    if (curr.accountType === 'CREDIT_CARD') {
+      return acc - curr.balance;
+    }
+    return acc + curr.balance;
+  }, 0);
+
+  // Gráfico de distribución patrimonial (activos activos con saldo > 0)
+  const activeAssets = balances.filter(b => b.accountType !== 'CREDIT_CARD' && b.balance > 0);
+  const totalAssets = activeAssets.reduce((sum, b) => sum + b.balance, 0);
+
+  const COLOR_PALETTE = [
+    { stroke: '#6366f1', text: 'text-indigo-400', bg: 'bg-indigo-500/10' }, // indigo
+    { stroke: '#10b981', text: 'text-emerald-400', bg: 'bg-emerald-500/10' }, // emerald
+    { stroke: '#f59e0b', text: 'text-amber-400', bg: 'bg-amber-500/10' }, // amber
+    { stroke: '#06b6d4', text: 'text-cyan-400', bg: 'bg-cyan-500/10' }, // cyan
+    { stroke: '#ec4899', text: 'text-pink-400', bg: 'bg-pink-500/10' }, // pink
+    { stroke: '#8b5cf6', text: 'text-violet-400', bg: 'bg-violet-500/10' }, // violet
+  ];
+
+  const ACCOUNT_META: Record<string, { icon: string; label: string; bgClass: string }> = {
+    CASH: { icon: '💵', label: 'Efectivo', bgClass: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' },
+    BANK: { icon: '🏦', label: 'Banco / Débito', bgClass: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' },
+    CREDIT_CARD: { icon: '💳', label: 'Tarjeta de Crédito (Pasivo)', bgClass: 'bg-rose-500/10 border-rose-500/20 text-rose-450' },
+    INVESTMENT: { icon: '📈', label: 'Inversión', bgClass: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' },
+  };
+
+  // Dibujar donut
+  let accumulatedPercent = 0;
+  const radius = 38;
+  const strokeWidth = 8;
+  const circ = 2 * Math.PI * radius; // 238.76
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
@@ -141,90 +175,202 @@ export default function AccountBalances({ onSelectAccount }: AccountBalancesProp
           <div>
             <h3 className="font-semibold text-slate-350">Sin cuentas o registros guardados</h3>
             <p className="text-slate-500 text-sm mt-1 max-w-sm">
-              Una vez que importes tu primer extracto de Money Manager, las cuentas aparecerán aquí con sus saldos actualizados.
+              Ingresa a la pestaña Cuentas para crear tus cuentas de efectivo, débito o crédito y empezar a registrar datos.
             </p>
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Card Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {balances.map((acc) => (
-              <div
-                key={acc.accountId}
-                onClick={() => onSelectAccount?.(acc.accountId)}
-                className={`bg-slate-900/60 backdrop-blur-md border border-slate-900 p-6 rounded-3xl flex flex-col justify-between shadow-lg transition-all duration-300 group ${
-                  onSelectAccount 
-                    ? 'cursor-pointer hover:border-indigo-500/50 hover:shadow-indigo-500/5 hover:scale-[1.01] active:scale-[0.99]' 
-                    : ''
-                }`}
-              >
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start gap-3">
-                    <h3 className="font-bold text-slate-300 text-lg group-hover:text-indigo-400 transition-colors line-clamp-2">
-                      {acc.accountName}
-                    </h3>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className="text-[9px] uppercase font-bold text-slate-500 bg-slate-800/40 border border-slate-850 px-1.5 py-0.5 rounded">
-                        Cuenta
-                      </span>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setReconcileAccountId(acc.accountId);
-                          setReconcileTarget((acc.balance / 100).toFixed(2));
-                        }}
-                        className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 px-2 py-1 rounded-md transition-all cursor-pointer shadow-sm shadow-indigo-500/10 flex items-center gap-1"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                          <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-                        </svg>
-                        Ajustar
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <span className="text-[10px] text-slate-500 block uppercase font-semibold tracking-wider">Saldo Disponible</span>
-                    <p className={`text-2xl font-black tracking-tight mt-1 ${
-                      acc.balance > 0 ? 'text-emerald-400' : acc.balance < 0 ? 'text-rose-400' : 'text-slate-400'
-                    }`}>
-                      {acc.balance >= 0 ? '+' : ''}${formatCents(acc.balance)}
-                    </p>
-                  </div>
-                </div>
+        <div className="space-y-6">
+          
+          {/* Fila superior: Resumen de Patrimonio + Acciones Rápidas */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Tarjeta de Patrimonio Neto */}
+            <div className="lg:col-span-2 bg-gradient-to-r from-slate-900/80 to-indigo-950/20 border border-slate-900 rounded-3xl p-6 flex flex-col justify-between shadow-lg animate-fade-in gap-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-200">Patrimonio Neto Consolidado</h4>
+                <p className="text-xs text-slate-500 mt-0.5">Suma neta total de activos (efectivo/bancos) menos pasivos (tarjetas de crédito)</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className={`text-4xl font-black tracking-tight ${grandTotal >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
+                  {grandTotal >= 0 ? '+' : ''}${formatCents(grandTotal)}
+                </p>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">USD</span>
+              </div>
+            </div>
 
-                <div className="border-t border-slate-850 mt-6 pt-4 space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Ingresos Totales:</span>
-                    <span className="text-emerald-500 font-medium">+${formatCents(acc.totalIncome)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-400">
-                    <span>Gastos/Transf.:</span>
-                    <span className="text-slate-300 font-medium">-${formatCents(acc.totalExpense)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500 border-t border-slate-850/50 pt-2 text-[10px]">
-                    <span>Transacciones:</span>
-                    <span>{acc.transactionCount} registros</span>
-                  </div>
+            {/* Acciones Rápidas */}
+            <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-4.5 flex flex-col justify-between gap-3 backdrop-blur-md shadow-lg animate-fade-in">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Acciones Rápidas</span>
+              <div className="grid grid-cols-3 gap-2.5">
+                <button 
+                  onClick={() => onQuickAction?.('EXPENSE')}
+                  className="flex flex-col items-center justify-center p-3 rounded-2xl border border-rose-500/25 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 hover:text-rose-250 transition-all cursor-pointer shadow-sm active:scale-95 select-none"
+                >
+                  <span className="text-xl mb-1">💸</span>
+                  <span className="text-[9px] font-bold tracking-tight">Gasto</span>
+                </button>
+                <button 
+                  onClick={() => onQuickAction?.('INCOME')}
+                  className="flex flex-col items-center justify-center p-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-400 hover:text-emerald-250 transition-all cursor-pointer shadow-sm active:scale-95 select-none"
+                >
+                  <span className="text-xl mb-1">💰</span>
+                  <span className="text-[9px] font-bold tracking-tight">Ingreso</span>
+                </button>
+                <button 
+                  onClick={() => onQuickAction?.('TRANSFER')}
+                  className="flex flex-col items-center justify-center p-3 rounded-2xl border border-indigo-500/25 bg-indigo-500/5 hover:bg-indigo-500/15 text-indigo-400 hover:text-indigo-250 transition-all cursor-pointer shadow-sm active:scale-95 select-none"
+                >
+                  <span className="text-xl mb-1">🔄</span>
+                  <span className="text-[9px] font-bold tracking-tight">Transferir</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Gráfico Donut de Distribución de Activos */}
+          {activeAssets.length > 0 && totalAssets > 0 && (
+            <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-6 flex flex-col md:flex-row items-center gap-8 backdrop-blur-md shadow-lg animate-fade-in">
+              <div className="relative flex items-center justify-center shrink-0 w-36 h-36">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r={radius} fill="transparent" stroke="#0f172a" strokeWidth={strokeWidth} />
+                  {activeAssets.map((acc, idx) => {
+                    const color = COLOR_PALETTE[idx % COLOR_PALETTE.length];
+                    const pct = (acc.balance / totalAssets) * 100;
+                    const strokeDash = (pct / 100) * circ;
+                    const strokeOffset = - (accumulatedPercent / 100) * circ;
+                    accumulatedPercent += pct;
+
+                    return (
+                      <circle
+                        key={acc.accountId}
+                        cx="50"
+                        cy="50"
+                        r={radius}
+                        fill="transparent"
+                        stroke={color.stroke}
+                        strokeWidth={strokeWidth}
+                        strokeDasharray={`${strokeDash} ${circ}`}
+                        strokeDashoffset={strokeOffset}
+                        className="transition-all duration-700 ease-out hover:stroke-[10px] cursor-pointer"
+                      >
+                        <title>{`${acc.accountName}: ${pct.toFixed(1)}%`}</title>
+                      </circle>
+                    );
+                  })}
+                </svg>
+                <div className="absolute flex flex-col items-center text-center select-none">
+                  <span className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Activos</span>
+                  <span className="text-sm font-extrabold text-slate-200 mt-0.5">${formatCents(totalAssets).split('.')[0]}</span>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="flex-1 w-full space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Distribución de Activos</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {activeAssets.map((acc, idx) => {
+                    const color = COLOR_PALETTE[idx % COLOR_PALETTE.length];
+                    const pct = (acc.balance / totalAssets) * 100;
+                    return (
+                      <div key={acc.accountId} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-950/20 border border-slate-900">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0`} style={{ backgroundColor: color.stroke }} />
+                          <span className="text-slate-300 font-semibold truncate">{acc.accountName}</span>
+                        </div>
+                        <span className="font-bold text-slate-400 shrink-0 ml-2">{pct.toFixed(1)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Gráfico de Evolución Mensual */}
           <MonthlyEvolutionChart />
 
-          {/* Gran Total */}
-          <div className="bg-gradient-to-r from-slate-900/80 to-indigo-950/20 border border-slate-900 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h4 className="text-md font-bold text-slate-200">Patrimonio Consolidado Total</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Suma neta total de todas tus cuentas bancarias guardadas</p>
-            </div>
-            <div>
-              <p className={`text-3xl font-black tracking-tight ${grandTotal >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
-                {grandTotal >= 0 ? '+' : ''}${formatCents(grandTotal)} <span className="text-sm font-semibold text-slate-500">USD</span>
-              </p>
+          {/* Lista de Cuentas */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-500 pl-1">
+              Desglose por Cuenta
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {balances.map((acc) => {
+                const meta = ACCOUNT_META[acc.accountType] || { icon: '💰', label: 'Cuenta', bgClass: 'bg-slate-800 text-slate-400' };
+                const isNegative = acc.balance < 0 && acc.accountType !== 'CREDIT_CARD';
+                
+                return (
+                  <div
+                    key={acc.accountId}
+                    onClick={() => onSelectAccount?.(acc.accountId)}
+                    className={`bg-slate-900/60 backdrop-blur-md border border-slate-900 p-6 rounded-3xl flex flex-col justify-between shadow-lg transition-all duration-300 group ${
+                      onSelectAccount 
+                        ? 'cursor-pointer hover:border-indigo-500/50 hover:shadow-indigo-500/5 hover:scale-[1.01] active:scale-[0.99]' 
+                        : ''
+                    }`}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-slate-350 text-base group-hover:text-indigo-400 transition-colors line-clamp-2" title={acc.accountName}>
+                            {acc.accountName}
+                          </h3>
+                          <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider mt-1 block">
+                            {meta.label}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-md shrink-0 ${meta.bgClass}`}>
+                            {meta.icon}
+                          </div>
+                          
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReconcileAccountId(acc.accountId);
+                              setReconcileTarget((acc.balance / 100).toFixed(2));
+                            }}
+                            className="text-[9px] font-bold text-indigo-300 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 px-2 py-0.5 rounded transition-all cursor-pointer"
+                          >
+                            Ajustar
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span className="text-[10px] text-slate-500 block uppercase font-semibold tracking-wider">Saldo Disponible</span>
+                        <p className={`text-2xl font-black tracking-tight mt-1 ${
+                          isNegative 
+                            ? 'text-rose-400' 
+                            : acc.accountType === 'CREDIT_CARD' 
+                              ? 'text-slate-300' 
+                              : acc.balance > 0 
+                                ? 'text-emerald-400' 
+                                : 'text-slate-500'
+                        }`}>
+                          {acc.balance >= 0 ? '+' : ''}${formatCents(acc.balance)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-850 mt-6 pt-4 space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Ingresos Totales:</span>
+                        <span className="text-emerald-500 font-medium">+${formatCents(acc.totalIncome)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>Gastos/Transf.:</span>
+                        <span className="text-slate-350 font-medium">-${formatCents(acc.totalExpense)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 border-t border-slate-850/50 pt-2 text-[10px]">
+                        <span>Transacciones:</span>
+                        <span>{acc.transactionCount} registros</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

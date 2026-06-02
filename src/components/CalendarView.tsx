@@ -28,6 +28,7 @@ interface CalendarViewProps {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   onEditTransaction?: (tx: Transaction) => void;
+  onDuplicateTransaction?: (tx: Transaction) => void;
 }
 
 // Timezone-safe local date YYYY-MM-DD formatter
@@ -38,7 +39,7 @@ const getLocalDateString = (date: Date) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-export default function CalendarView({ transactions, startDate, endDate, onEditTransaction }: CalendarViewProps) {
+export default function CalendarView({ transactions, startDate, endDate, onEditTransaction, onDuplicateTransaction }: CalendarViewProps) {
   // 1. Parse start and end dates
   const startParts = startDate.split('-').map(Number);
   const endParts = endDate.split('-').map(Number);
@@ -411,6 +412,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
                       transactions={dayTxs}
                       visibleColumns={visibleColumns}
                       onEditTransaction={onEditTransaction}
+                      onDuplicateTransaction={onDuplicateTransaction}
                       groupByDate={false}
                     />
                   </div>

@@ -140,7 +140,8 @@ export async function POST(request: NextRequest) {
           baseAmountUsd: adjustAmount,
           transactionDate: txDate,
           note: 'Conciliación manual de saldo inicial',
-          importHash: `MANUAL_ADJUST_${accountId}_${Date.now()}_${randomUUID()}`,
+          provider: 'MANUAL',
+          providerTransactionId: `MANUAL_ADJUST_${accountId}_${Date.now()}_${randomUUID()}`,
           isOpeningBalance: true
         }
       });

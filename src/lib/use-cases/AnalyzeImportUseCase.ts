@@ -1,9 +1,11 @@
 import prisma from '../prisma';
-import { parseMoneyManagerExcel } from '../parsers/moneyManagerParser';
+import { getProvider } from '../providers';
 import { ImportAnalysisResult, TransactionType } from '../domain/types';
+import { subDays, addDays } from 'date-fns';
 
-export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisResult> {
-  const parsedTransactions = parseMoneyManagerExcel(fileBuffer);
+export async function analyzeImport(fileBuffer: Buffer, providerName: string = 'MONEY_MANAGER'): Promise<ImportAnalysisResult> {
+  const provider = getProvider(providerName);
+  const parsedTransactions = provider.parse(fileBuffer);
   
   if (parsedTransactions.length === 0) {
     return {
@@ -43,27 +45,28 @@ export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisR
   const [existingAccounts, existingCategories, existingTransactions] = await Promise.all([
     prisma.account.findMany({
       where: { name: { in: accountNames } },
-      select: { name: true }
+      select: { id: true, name: true }
     }),
     prisma.category.findMany({
       where: { name: { in: categoryNames } },
       select: { name: true }
     }),
     prisma.transaction.findMany({
-      where: { importHash: { in: importHashes } },
-      select: { importHash: true }
+      where: {
+        provider: provider.name,
+        providerTransactionId: { in: importHashes }
+      },
+      select: { providerTransactionId: true }
     })
   ]);
 
-  const existingAccountSet = new Set(existingAccounts.map(a => a.name));
+  const existingAccountMap = new Map<string, string>(existingAccounts.map(a => [a.name, a.id]));
   const existingCategorySet = new Set(existingCategories.map(c => c.name));
-  const existingHashSet = new Set(existingTransactions.map(t => t.importHash));
+  const existingHashSet = new Set(existingTransactions.map(t => t.providerTransactionId));
 
   // Determine new accounts and categories
-  const newAccounts = accountNames.filter(name => !existingAccountSet.has(name));
+  const newAccounts = accountNames.filter(name => !existingAccountMap.has(name));
   
-  // We need to determine the type for new categories.
-  // We'll infer it from the first transaction that uses this category.
   const newCategoriesMap = new Map<string, TransactionType>();
   parsedTransactions.forEach(t => {
     if (t.type === 'TRANSFER') {
@@ -93,12 +96,36 @@ export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisR
   });
 
   const newSubcategories = subcategoryCombos.filter(combo => {
-    // If the category is new, then this subcategory is definitely new
     if (!existingCategorySet.has(combo.category)) {
       return true;
     }
-    // Otherwise, check if it already exists under this category in the DB
     return !existingSubcategorySet.has(`${combo.category}_${combo.sub}`);
+  });
+
+  // --- LOGICA DE RECONCILIACION / MATCHING ---
+  // Obtener todas las transacciones "MANUAL" existentes para las cuentas de la importación
+  // que estén dentro del rango de fechas de la importación (+/- 2 días)
+  const dates = parsedTransactions.map(t => t.date.getTime());
+  const minDate = new Date(Math.min(...dates));
+  const maxDate = new Date(Math.max(...dates));
+
+  const manualTransactions = await prisma.transaction.findMany({
+    where: {
+      provider: 'MANUAL',
+      transactionDate: {
+        gte: subDays(minDate, 2),
+        lte: addDays(maxDate, 2)
+      },
+      accountId: { in: Array.from(existingAccountMap.values()) }
+    },
+    select: {
+      id: true,
+      transactionDate: true,
+      amount: true,
+      accountId: true,
+      transactionType: true,
+      note: true
+    }
   });
 
   let duplicateCount = 0;
@@ -106,6 +133,32 @@ export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisR
   const previewTransactions = parsedTransactions.map(t => {
     const isDuplicate = existingHashSet.has(t.importHash);
     if (isDuplicate) duplicateCount++;
+
+    // Intentar buscar candidato para matching
+    let matchCandidate: { id: string; date: string; note: string | null } | null = null;
+
+    if (!isDuplicate) {
+      const accountId = existingAccountMap.get(t.accountName);
+      if (accountId) {
+        // Encontrar transacciones manuales que coincidan en cuenta, monto, tipo y fecha (+/- 2 días)
+        const match = manualTransactions.find(mt => {
+          const dateDiffDays = Math.abs(mt.transactionDate.getTime() - t.date.getTime()) / (1000 * 60 * 60 * 24);
+          return mt.accountId === accountId &&
+                 mt.amount === t.amount &&
+                 mt.transactionType === t.type &&
+                 dateDiffDays <= 2;
+        });
+
+        if (match) {
+          matchCandidate = {
+            id: match.id,
+            date: match.transactionDate.toISOString(),
+            note: match.note
+          };
+        }
+      }
+    }
+
     return {
       date: t.date.toISOString(),
       accountName: t.accountName,
@@ -116,7 +169,9 @@ export async function analyzeImport(fileBuffer: Buffer): Promise<ImportAnalysisR
       baseAmountUsd: t.baseAmountUsd,
       type: t.type,
       note: t.note || null,
-      isDuplicate
+      isDuplicate,
+      importHash: t.importHash,
+      matchCandidate // Nuevo campo para la UI de importación
     };
   });
 

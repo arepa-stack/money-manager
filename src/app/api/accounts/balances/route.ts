@@ -54,6 +54,8 @@ export async function GET(request: NextRequest) {
       return {
         accountId: account.id,
         accountName: account.name,
+        accountType: account.type,
+        accountCurrency: account.currency,
         balance,
         totalIncome,
         totalExpense,

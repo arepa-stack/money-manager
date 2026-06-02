@@ -6,6 +6,7 @@ import ImportPreview from '@/components/ImportPreview';
 import AccountBalances from '@/components/AccountBalances';
 import DateRangePicker from '@/components/DateRangePicker';
 import CategoryManager from '@/components/CategoryManager';
+import AccountManager from '@/components/AccountManager';
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
 import { formatCents } from '@/lib/moneyUtils';
 import CalendarView from '@/components/CalendarView';
@@ -42,24 +43,32 @@ const getLocalDateString = (date: Date) => {
 };
 
 export default function Dashboard() {
-  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'bcv'>('import');
+  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv'>('balances');
   const [importState, setImportState] = useState<'upload' | 'preview' | 'success'>('upload');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [initialModalType, setInitialModalType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER' | undefined>(undefined);
+  const [selectedProvider, setSelectedProvider] = useState<string>('MONEY_MANAGER');
   const [file, setFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ImportAnalysisResult | null>(null);
   const [executeResult, setExecuteResult] = useState<ImportExecuteResult | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [accounts, setAccounts] = useState<{ id: string; name: string; currency: string; type: string }[]>([]);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [allCategories, setAllCategories] = useState<{ id: string; name: string; type: string }[]>([]);
   const [hasLoadedDefaultTab, setHasLoadedDefaultTab] = useState(false);
   const [isResolvingDefaultTab, setIsResolvingDefaultTab] = useState(true);
   
   // Filtering states
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedTransactionType, setSelectedTransactionType] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
   const [availableNotes, setAvailableNotes] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(true);
   const [isLoadingTxs, setIsLoadingTxs] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -126,8 +135,21 @@ export default function Dashboard() {
     setEndDate(getLocalDateString(lastDay));
     
     fetchAccountsList();
+    fetchCategoriesList();
     fetchAvailableNotes();
   }, []);
+
+  const fetchCategoriesList = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const data = await res.json();
+        setAllCategories(data.map((c: any) => ({ id: c.id, name: c.name, type: c.type })));
+      }
+    } catch (err) {
+      console.error('Error al cargar categorías para filtros:', err);
+    }
+  };
 
   // Initialize adjustment values for all accounts
   useEffect(() => {
@@ -145,15 +167,20 @@ export default function Dashboard() {
       const res = await fetch('/api/accounts/balances');
       if (res.ok) {
         const data = await res.json();
-        setAccounts(data.map((a: any) => ({ id: a.accountId, name: a.accountName })));
+        setAccounts(data.map((a: any) => ({
+          id: a.accountId,
+          name: a.accountName,
+          currency: a.accountCurrency,
+          type: a.accountType
+        })));
         
         // Auto-switch default active tab on initial mount
         setHasLoadedDefaultTab((loaded) => {
           if (!loaded) {
             if (data.length > 0) {
-              setCurrentTab('transactions');
+              setCurrentTab('balances');
             } else {
-              setCurrentTab('import');
+              setCurrentTab('accounts');
             }
           }
           return true;
@@ -186,6 +213,8 @@ export default function Dashboard() {
     try {
       const params = new URLSearchParams();
       if (selectedAccountId) params.append('accountId', selectedAccountId);
+      if (selectedCategoryId) params.append('categoryId', selectedCategoryId);
+      if (selectedTransactionType) params.append('transactionType', selectedTransactionType);
       params.append('startDate', startDate);
       params.append('endDate', endDate);
       params.append('timezoneOffset', new Date().getTimezoneOffset().toString());
@@ -206,11 +235,12 @@ export default function Dashboard() {
   // Re-fetch transactions on filter changes
   useEffect(() => {
     fetchTransactions();
-  }, [selectedAccountId, startDate, endDate, debouncedSearchQuery]);
+  }, [selectedAccountId, selectedCategoryId, selectedTransactionType, startDate, endDate, debouncedSearchQuery]);
 
-  const handleAnalyzed = (result: ImportAnalysisResult, uploadedFile: File) => {
+  const handleAnalyzed = (result: ImportAnalysisResult, uploadedFile: File, provider: string) => {
     setAnalysisResult(result);
     setFile(uploadedFile);
+    setSelectedProvider(provider);
     setImportState('preview');
     setError(null);
   };
@@ -287,6 +317,8 @@ export default function Dashboard() {
 
   const handleClearFilters = () => {
     setSelectedAccountId('');
+    setSelectedCategoryId('');
+    setSelectedTransactionType('');
     setSearchQuery('');
     setDebouncedSearchQuery('');
     const now = new Date();
@@ -299,6 +331,11 @@ export default function Dashboard() {
   const handleEditSuccess = () => {
     fetchTransactions();
     fetchAccountsList();
+  };
+
+  const handleDuplicateTransaction = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setIsDuplicate(true);
   };
 
   const handleClearDatabase = async () => {
@@ -413,13 +450,13 @@ export default function Dashboard() {
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-900 gap-6 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
           <button
-            onClick={() => setCurrentTab('import')}
+            onClick={() => setCurrentTab('balances')}
             className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
-              currentTab === 'import' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+              currentTab === 'balances' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Consola de Importación
-            {currentTab === 'import' && (
+            Saldos y Evolución
+            {currentTab === 'balances' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
             )}
           </button>
@@ -435,13 +472,24 @@ export default function Dashboard() {
             )}
           </button>
           <button
-            onClick={() => setCurrentTab('balances')}
+            onClick={() => setCurrentTab('import')}
             className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
-              currentTab === 'balances' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+              currentTab === 'import' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Saldos y Evolución
-            {currentTab === 'balances' && (
+            Consola de Importación
+            {currentTab === 'import' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
+            )}
+          </button>
+          <button
+            onClick={() => setCurrentTab('accounts')}
+            className={`pb-4 text-sm font-semibold transition-all relative cursor-pointer ${
+              currentTab === 'accounts' ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Cuentas
+            {currentTab === 'accounts' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
             )}
           </button>
@@ -491,6 +539,7 @@ export default function Dashboard() {
               <ImportPreview
                 analysis={analysisResult}
                 file={file}
+                provider={selectedProvider}
                 onCancel={handleCancel}
                 onSuccess={handleSuccess}
                 onError={setError}
@@ -621,40 +670,53 @@ export default function Dashboard() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <h2 className="text-lg font-bold text-slate-200">Filtros de Búsqueda</h2>
-                  <p className="text-xs text-slate-500">Filtra tus movimientos por cuenta bancaria y rango de fechas</p>
+                  <p className="text-xs text-slate-500">Consulta, busca y desglosa tus movimientos guardados</p>
                 </div>
-                {/* Preset quick buttons */}
-                <div className="flex flex-wrap gap-2">
+                {/* Actions & Presets */}
+                <div className="flex flex-wrap items-center gap-3">
                   <button
-                    onClick={() => setPreset('1w')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-850 hover:border-slate-700 text-slate-300 transition-all cursor-pointer"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="text-xs font-bold text-white bg-indigo-650 hover:bg-indigo-500 px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10 h-[34px]"
                   >
-                    1 Semana
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Registrar Movimiento
                   </button>
+
                   <button
-                    onClick={() => setPreset('1m')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-850 hover:border-slate-700 text-slate-300 transition-all cursor-pointer"
+                    onClick={() => setShowAnalytics(!showAnalytics)}
+                    className={`text-xs font-bold px-3 py-2 rounded-xl border transition-all cursor-pointer h-[34px] ${
+                      showAnalytics
+                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20'
+                        : 'bg-slate-800 border-slate-750 text-slate-350 hover:bg-slate-700 hover:text-slate-100'
+                    }`}
                   >
-                    1 Mes
+                    {showAnalytics ? 'Ocultar Análisis' : 'Mostrar Análisis'}
                   </button>
-                  <button
-                    onClick={() => setPreset('thisMonth')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 transition-all cursor-pointer"
-                  >
-                    Este Mes
-                  </button>
-                  <button
-                    onClick={() => setPreset('1y')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-850 hover:border-slate-700 text-slate-300 transition-all cursor-pointer"
-                  >
-                    1 Año
-                  </button>
-                  <button
-                    onClick={handleClearFilters}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
-                  >
-                    Limpiar
-                  </button>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setPreset('1w')}
+                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-850 hover:border-slate-700 text-slate-300 transition-all cursor-pointer"
+                      title="Última semana"
+                    >
+                      1S
+                    </button>
+                    <button
+                      onClick={() => setPreset('thisMonth')}
+                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-850 hover:border-slate-700 text-slate-300 transition-all cursor-pointer"
+                      title="Este mes"
+                    >
+                      Mes
+                    </button>
+                    <button
+                      onClick={handleClearFilters}
+                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -733,10 +795,11 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+              {/* 4 Filters Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
                 {/* Account selector */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Cuenta Bancaria</label>
+                  <label className="text-xs font-semibold text-slate-400">Cuenta</label>
                   <select
                     value={selectedAccountId}
                     onChange={(e) => setSelectedAccountId(e.target.value)}
@@ -751,8 +814,40 @@ export default function Dashboard() {
                   </select>
                 </div>
 
+                {/* Category selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Categoría</label>
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                  >
+                    <option value="">Todas las categorías</option>
+                    {allCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name} ({cat.type === 'INCOME' ? 'Ingreso' : cat.type === 'EXPENSE' ? 'Gasto' : 'Transf.'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Transaction type selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Tipo de Flujo</label>
+                  <select
+                    value={selectedTransactionType}
+                    onChange={(e) => setSelectedTransactionType(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                  >
+                    <option value="">Todos los flujos</option>
+                    <option value="EXPENSE">Gastos (egreso)</option>
+                    <option value="INCOME">Ingresos (entrada)</option>
+                    <option value="TRANSFER">Transferencias</option>
+                  </select>
+                </div>
+
                 {/* Date Range Picker */}
-                <div className="flex flex-col gap-1.5 md:col-span-2">
+                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-400">Rango de Fechas</label>
                   <DateRangePicker
                     startDate={startDate}
@@ -766,38 +861,39 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Quick Stats Panel (Filtered summary) */}
-            {transactions.length > 0 && (
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
-                  <p className="text-sm font-medium text-slate-400">Balance del Período</p>
-                  <p className={`text-3xl font-extrabold mt-2 ${totalBalanceUsd >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {totalBalanceUsd >= 0 ? '+' : ''}${formatCents(totalBalanceUsd)}
-                  </p>
-                  <span className="text-[10px] text-slate-500 mt-2 block">Sumatoria neta filtrada en USD</span>
-                </div>
+            {/* Colapsable Stats & Charts */}
+            {showAnalytics && transactions.length > 0 && (
+              <div className="space-y-6 animate-fade-in">
+                {/* Quick Stats Panel (Filtered summary) */}
+                <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
+                    <p className="text-sm font-medium text-slate-400">Balance del Período</p>
+                    <p className={`text-3xl font-extrabold mt-2 ${totalBalanceUsd >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {totalBalanceUsd >= 0 ? '+' : ''}${formatCents(totalBalanceUsd)}
+                    </p>
+                    <span className="text-[10px] text-slate-500 mt-2 block">Sumatoria neta filtrada en USD</span>
+                  </div>
 
-                <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
-                  <p className="text-sm font-medium text-emerald-400">Ingresos del Período</p>
-                  <p className="text-3xl font-extrabold text-emerald-300 mt-2">
-                    ${formatCents(totalIncomeUsd)}
-                  </p>
-                  <span className="text-[10px] text-slate-500 mt-2 block">Ingresos en rango</span>
-                </div>
+                  <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
+                    <p className="text-sm font-medium text-emerald-400">Ingresos del Período</p>
+                    <p className="text-3xl font-extrabold text-emerald-300 mt-2">
+                      ${formatCents(totalIncomeUsd)}
+                    </p>
+                    <span className="text-[10px] text-slate-500 mt-2 block">Ingresos en rango</span>
+                  </div>
 
-                <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
-                  <p className="text-sm font-medium text-rose-400">Gastos del Período</p>
-                  <p className="text-3xl font-extrabold text-rose-300 mt-2">
-                    -${formatCents(totalExpenseUsd)}
-                  </p>
-                  <span className="text-[10px] text-slate-500 mt-2 block">Gastos deducidos en rango</span>
-                </div>
-              </section>
-            )}
+                  <div className="bg-slate-900/40 border border-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-sm shadow-md">
+                    <p className="text-sm font-medium text-rose-400">Gastos del Período</p>
+                    <p className="text-3xl font-extrabold text-rose-300 mt-2">
+                      -${formatCents(totalExpenseUsd)}
+                    </p>
+                    <span className="text-[10px] text-slate-500 mt-2 block">Gastos deducidos en rango</span>
+                  </div>
+                </section>
 
-            {/* Category spending distribution */}
-            {transactions.length > 0 && (
-              <CategoryDistribution transactions={transactions} />
+                {/* Category spending distribution */}
+                <CategoryDistribution transactions={transactions} />
+              </div>
             )}
 
             {/* Transactions List */}
@@ -828,6 +924,16 @@ export default function Dashboard() {
                       Calendario
                     </button>
                   </div>
+
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="text-xs font-bold text-white bg-indigo-650 hover:bg-indigo-600 px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer h-[34px] shadow-sm shadow-indigo-600/10"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Nueva Transacción
+                  </button>
 
                   <button 
                     onClick={fetchTransactions}
@@ -914,6 +1020,7 @@ export default function Dashboard() {
                   startDate={startDate}
                   endDate={endDate}
                   onEditTransaction={setEditingTransaction}
+                  onDuplicateTransaction={handleDuplicateTransaction}
                 />
               ) : (
                 <div className="bg-slate-900/20 border border-slate-900 rounded-3xl overflow-hidden backdrop-blur-sm">
@@ -921,6 +1028,7 @@ export default function Dashboard() {
                     transactions={transactions}
                     visibleColumns={visibleColumns}
                     onEditTransaction={setEditingTransaction}
+                    onDuplicateTransaction={handleDuplicateTransaction}
                     groupByDate={true}
                   />
                 </div>
@@ -931,23 +1039,52 @@ export default function Dashboard() {
 
         {currentTab === 'balances' && (
           <div className="animate-fade-in">
-            <AccountBalances onSelectAccount={(accId) => {
-              setSelectedAccountId(accId);
-              setCurrentTab('transactions');
-            }} />
+            <AccountBalances 
+              onSelectAccount={(accId) => {
+                setSelectedAccountId(accId);
+                setCurrentTab('transactions');
+              }} 
+              onQuickAction={(actionType) => {
+                setInitialModalType(actionType);
+                setIsCreateModalOpen(true);
+              }}
+            />
           </div>
         )}
 
         {currentTab === 'categories' && (
           <div className="animate-fade-in">
-            <CategoryManager />
+            <CategoryManager onChange={fetchTransactions} />
+          </div>
+        )}
+        {currentTab === 'accounts' && (
+          <div className="animate-fade-in">
+            <AccountManager onChange={() => {
+              fetchAccountsList();
+              fetchTransactions();
+            }} />
           </div>
         )}
         {editingTransaction && (
           <EditTransactionModal
             transaction={editingTransaction}
             accounts={accounts}
-            onClose={() => setEditingTransaction(null)}
+            isDuplicate={isDuplicate}
+            onClose={() => {
+              setEditingTransaction(null);
+              setIsDuplicate(false);
+            }}
+            onSuccess={handleEditSuccess}
+          />
+        )}
+        {isCreateModalOpen && (
+          <EditTransactionModal
+            accounts={accounts}
+            initialType={initialModalType}
+            onClose={() => {
+              setIsCreateModalOpen(false);
+              setInitialModalType(undefined);
+            }}
             onSuccess={handleEditSuccess}
           />
         )}

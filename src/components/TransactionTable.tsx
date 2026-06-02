@@ -33,6 +33,7 @@ interface TransactionTableProps {
     note: boolean;
   };
   onEditTransaction?: (tx: Transaction) => void;
+  onDuplicateTransaction?: (tx: Transaction) => void;
   groupByDate?: boolean;
 }
 
@@ -47,10 +48,12 @@ export default function TransactionTable({
   transactions,
   visibleColumns,
   onEditTransaction,
+  onDuplicateTransaction,
   groupByDate = false,
 }: TransactionTableProps) {
   const activeColumnsCount = Object.values(visibleColumns).filter(Boolean).length;
-  const totalColumnsCount = activeColumnsCount + (onEditTransaction ? 1 : 0);
+  const hasActions = !!(onEditTransaction || onDuplicateTransaction);
+  const totalColumnsCount = activeColumnsCount + (hasActions ? 1 : 0);
 
   // Group transactions by local date key (YYYY-MM-DD) if grouping is enabled
   const renderRows = () => {
@@ -133,6 +136,13 @@ export default function TransactionTable({
             {formatCents(t.amount)}
           </span>
           <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
+          {t.currency.toUpperCase() !== 'USD' && t.baseAmountUsd > 0 && (
+            <div className="text-[10px] text-slate-500 block mt-0.5 font-medium" title="Tasa de cambio implícita de registro">
+              {t.currency.toUpperCase() === 'EUR' 
+                ? `Tasa: ${(t.baseAmountUsd / t.amount).toFixed(4)} $/€` 
+                : `Tasa: ${(t.amount / t.baseAmountUsd).toFixed(2)} ${t.currency.toUpperCase()}/$`}
+            </div>
+          )}
         </td>
       )}
       {visibleColumns.usdAmount && (
@@ -148,17 +158,32 @@ export default function TransactionTable({
           )}
         </td>
       )}
-      {onEditTransaction && (
+      {hasActions && (
         <td className="px-6 py-4 whitespace-nowrap text-right sticky right-0 bg-slate-950 group-hover:bg-slate-900/90 transition-colors z-10 border-l border-slate-850/80 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.5)]">
-          <button
-            onClick={() => onEditTransaction(t)}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-slate-700 cursor-pointer transition-all inline-flex items-center"
-            title="Editar transacción"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-            </svg>
-          </button>
+          <div className="flex items-center justify-end gap-2">
+            {onDuplicateTransaction && (
+              <button
+                onClick={() => onDuplicateTransaction(t)}
+                className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-emerald-450 hover:text-emerald-400 hover:border-slate-700 cursor-pointer transition-all inline-flex items-center"
+                title="Duplicar transacción"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v8.25A2.25 2.25 0 0 0 6 16.5h2.25m8.25-8.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-7.5A2.25 2.25 0 0 1 8.25 18v-1.5m8.25-8.25h-8.25M8.25 16.5H18" />
+                </svg>
+              </button>
+            )}
+            {onEditTransaction && (
+              <button
+                onClick={() => onEditTransaction(t)}
+                className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-slate-700 cursor-pointer transition-all inline-flex items-center"
+                title="Editar transacción"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                </svg>
+              </button>
+            )}
+          </div>
         </td>
       )}
     </tr>
@@ -191,8 +216,8 @@ export default function TransactionTable({
         </div>
       </div>
 
-      {/* Derecha: Importe y botón editar */}
-      <div className="flex items-center gap-3 shrink-0">
+      {/* Derecha: Importe y acciones */}
+      <div className="flex items-center gap-2.5 shrink-0">
         <div className="text-right">
           <span className={`font-bold text-sm ${
             t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-150 text-slate-200'
@@ -201,19 +226,40 @@ export default function TransactionTable({
             {formatCents(t.amount)}
           </span>
           <span className="text-[10px] text-slate-500 block">{t.currency}</span>
+          {t.currency.toUpperCase() !== 'USD' && t.baseAmountUsd > 0 && (
+            <span className="text-[9px] text-slate-500 block mt-0.5 font-medium">
+              {t.currency.toUpperCase() === 'EUR' 
+                ? `${(t.baseAmountUsd / t.amount).toFixed(4)} $/€` 
+                : `${(t.amount / t.baseAmountUsd).toFixed(2)} ${t.currency.toUpperCase()}/$`}
+            </span>
+          )}
         </div>
 
-        {onEditTransaction && (
-          <button
-            onClick={() => onEditTransaction(t)}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-slate-750 cursor-pointer transition-all active:scale-95 flex items-center justify-center shrink-0"
-            title="Editar transacción"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-            </svg>
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {onDuplicateTransaction && (
+            <button
+              onClick={() => onDuplicateTransaction(t)}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-850 text-slate-400 hover:text-emerald-400 hover:border-slate-750 cursor-pointer transition-all active:scale-95 flex items-center justify-center shrink-0"
+              title="Duplicar transacción"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v8.25A2.25 2.25 0 0 0 6 16.5h2.25m8.25-8.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-7.5A2.25 2.25 0 0 1 8.25 18v-1.5m8.25-8.25h-8.25M8.25 16.5H18" />
+              </svg>
+            </button>
+          )}
+
+          {onEditTransaction && (
+            <button
+              onClick={() => onEditTransaction(t)}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-slate-750 cursor-pointer transition-all active:scale-95 flex items-center justify-center shrink-0"
+              title="Editar transacción"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -284,7 +330,7 @@ export default function TransactionTable({
               {visibleColumns.amount && <th className="px-6 py-4">Importe Original</th>}
               {visibleColumns.usdAmount && <th className="px-6 py-4">Equivalente base (USD)</th>}
               {visibleColumns.note && <th className="px-6 py-4">Nota / Descripción</th>}
-              {onEditTransaction && (
+              {hasActions && (
                 <th className="px-6 py-4 text-right sticky right-0 bg-slate-900 border-l border-slate-850/80 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.5)] z-20">
                   Acciones
                 </th>

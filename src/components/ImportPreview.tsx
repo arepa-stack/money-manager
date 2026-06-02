@@ -7,18 +7,51 @@ import { formatCents } from '@/lib/moneyUtils';
 interface ImportPreviewProps {
   analysis: ImportAnalysisResult;
   file: File;
+  provider: string;
   onCancel: () => void;
   onSuccess: (result: ImportExecuteResult) => void;
   onError: (msg: string) => void;
 }
 
-export default function ImportPreview({ analysis, file, onCancel, onSuccess, onError }: ImportPreviewProps) {
+export default function ImportPreview({ 
+  analysis, 
+  file, 
+  provider,
+  onCancel, 
+  onSuccess, 
+  onError 
+}: ImportPreviewProps) {
   const [isCommitting, setIsCommitting] = useState(false);
+
+  // Mapeo de importHash -> manualTransactionId
+  const [reconciliations, setReconciliations] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    analysis.previewTransactions.forEach(t => {
+      if (t.matchCandidate) {
+        initial[t.importHash] = t.matchCandidate.id;
+      }
+    });
+    return initial;
+  });
+
+  const toggleReconciliation = (importHash: string, manualId: string) => {
+    setReconciliations(prev => {
+      const next = { ...prev };
+      if (next[importHash]) {
+        delete next[importHash];
+      } else {
+        next[importHash] = manualId;
+      }
+      return next;
+    });
+  };
 
   const handleConfirm = async () => {
     setIsCommitting(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('provider', provider);
+    formData.append('reconciliations', JSON.stringify(reconciliations));
 
     try {
       const res = await fetch('/api/import/commit', {
@@ -40,6 +73,10 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
     }
   };
 
+  // Calcular totales ajustados por las reconciliaciones
+  const countReconciliations = Object.keys(reconciliations).length;
+  const countNewInsertions = analysis.totalParsed - countReconciliations;
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 animate-fade-in">
       {/* Resumen Superior */}
@@ -50,15 +87,18 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
         </div>
         <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
           <p className="text-sm font-medium text-emerald-400">Nuevas Transacciones</p>
-          <p className="text-3xl font-bold text-emerald-300 mt-2">{analysis.totalParsed}</p>
+          <p className="text-3xl font-bold text-emerald-300 mt-2">
+            {countNewInsertions} <span className="text-xs text-slate-500 font-normal">(+{countReconciliations} fusionadas)</span>
+          </p>
         </div>
         <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
           <p className="text-sm font-medium text-amber-400">Duplicadas (Omitidas)</p>
           <p className="text-3xl font-bold text-amber-300 mt-2">{analysis.totalSkippedDuplicates}</p>
         </div>
         <div className="bg-indigo-950/40 border border-indigo-900/40 p-5 rounded-2xl flex flex-col justify-between">
-          <p className="text-sm font-medium text-indigo-400">Archivo Cargado</p>
-          <p className="text-sm font-semibold text-indigo-200 mt-2 truncate" title={file.name}>
+          <p className="text-sm font-medium text-indigo-400">Origen &amp; Archivo</p>
+          <p className="text-xs font-semibold text-indigo-200 mt-2 truncate" title={file.name}>
+            <span className="text-indigo-400 block font-bold text-[10px] uppercase mb-0.5">{provider}</span>
             {file.name}
           </p>
         </div>
@@ -126,10 +166,10 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
       {/* Tabla de Preview */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
-          <h3 className="text-md font-semibold text-slate-200">Previsualización de Transacciones (Primeras 10)</h3>
-          <span className="text-xs text-slate-500">Mostrando registros del archivo</span>
+          <h3 className="text-md font-semibold text-slate-200">Previsualización de Transacciones (Primeras 20)</h3>
+          <span className="text-xs text-slate-500">Revisa duplicados y conciliaciones manuales</span>
         </div>
-        <div className="overflow-x-auto max-h-[300px]">
+        <div className="overflow-x-auto max-h-[400px]">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-900/20 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800">
@@ -139,50 +179,73 @@ export default function ImportPreview({ analysis, file, onCancel, onSuccess, onE
                 <th className="px-6 py-3">Importe</th>
                 <th className="px-6 py-3">Moneda Base (USD)</th>
                 <th className="px-6 py-3">Nota</th>
-                <th className="px-6 py-3 text-center">Estado</th>
+                <th className="px-6 py-3 text-center">Estado / Conciliación</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-850 text-sm text-slate-300">
-              {analysis.previewTransactions.slice(0, 10).map((t, idx) => (
-                <tr key={idx} className={`${t.isDuplicate ? 'opacity-50 bg-slate-950/20' : 'hover:bg-slate-800/10'}`}>
-                  <td className="px-6 py-3 whitespace-nowrap text-xs text-slate-400">
-                    {new Date(t.date).toLocaleDateString()} {new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-6 py-3 font-medium whitespace-nowrap text-slate-200">{t.accountName}</td>
-                  <td className="px-6 py-3 whitespace-nowrap">
-                    <span className="text-slate-200">{t.categoryName}</span>
-                    {t.subcategoryName && (
-                      <span className="text-slate-400 text-xs block">&gt; {t.subcategoryName}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap">
-                    <span className={`font-semibold ${
-                      t.type === 'INCOME' ? 'text-emerald-400' : t.type === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-200'
-                    }`}>
-                      {t.type === 'EXPENSE' ? '-' : t.type === 'INCOME' ? '+' : ''}
-                      {formatCents(t.amount)}
-                    </span>
-                    <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-slate-300">
-                    ${formatCents(t.baseAmountUsd)}
-                  </td>
-                  <td className="px-6 py-3 max-w-[200px] truncate text-slate-400" title={t.note || ''}>
-                    {t.note || '-'}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-center">
-                    {t.isDuplicate ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Duplicado (Omitir)
+              {analysis.previewTransactions.slice(0, 20).map((t, idx) => {
+                const hasMatch = !!t.matchCandidate;
+                const isReconciled = hasMatch && !!reconciliations[t.importHash];
+
+                return (
+                  <tr key={idx} className={`${t.isDuplicate ? 'opacity-50 bg-slate-950/20' : 'hover:bg-slate-800/10'}`}>
+                    <td className="px-6 py-3 whitespace-nowrap text-xs text-slate-400">
+                      {new Date(t.date).toLocaleDateString()} {new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-6 py-3 font-medium whitespace-nowrap text-slate-200">{t.accountName}</td>
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className="text-slate-200">{t.categoryName}</span>
+                      {t.subcategoryName && (
+                        <span className="text-slate-400 text-xs block">&gt; {t.subcategoryName}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className={`font-semibold ${
+                        t.type === 'INCOME' ? 'text-emerald-400' : t.type === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-200'
+                      }`}>
+                        {t.type === 'EXPENSE' ? '-' : t.type === 'INCOME' ? '+' : ''}
+                        {formatCents(t.amount)}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Nuevo
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-slate-300">
+                      ${formatCents(t.baseAmountUsd)}
+                    </td>
+                    <td className="px-6 py-3 max-w-[180px] truncate text-slate-400" title={t.note || ''}>
+                      {t.note || '-'}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-center">
+                      {t.isDuplicate ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          Duplicado (Omitido)
+                        </span>
+                      ) : hasMatch ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleReconciliation(t.importHash, t.matchCandidate!.id)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                            isReconciled
+                              ? 'bg-indigo-650 text-indigo-100 border-indigo-500/40 shadow-sm shadow-indigo-600/10'
+                              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isReconciled}
+                            onChange={() => {}} // handled by button click
+                            className="rounded text-indigo-500 border-slate-700 bg-slate-950 focus:ring-0 focus:ring-offset-0 pointer-events-none"
+                          />
+                          <span>Fusionar con Manual</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Nuevo
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

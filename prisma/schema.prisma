@@ -13,6 +13,8 @@ datasource db {
 model Account {
   id                String        @id @default(uuid())
   name              String        @unique
+  type              String        @default("CASH")
+  currency          String        @default("USD")
   createdAt         DateTime      @default(now()) @map("created_at")
   transactions      Transaction[] @relation("TransferOrigin")
   receivedTransfers Transaction[] @relation("TransferDestination")
@@ -24,6 +26,7 @@ model Category {
   id            String        @id @default(uuid())
   name          String        @unique
   type          String // 'INCOME', 'EXPENSE', 'TRANSFER'
+  budgetUsd     Int?          @map("budget_usd")
   subcategories Subcategory[]
   transactions  Transaction[]
 
@@ -43,7 +46,8 @@ model Subcategory {
 
 model Transaction {
   id              String       @id @default(uuid())
-  importHash      String       @unique @map("import_hash")
+  provider        String       @default("MANUAL")
+  providerTransactionId String? @map("provider_transaction_id")
   transactionDate DateTime     @map("transaction_date")
   accountId       String       @map("account_id")
   account         Account      @relation("TransferOrigin", fields: [accountId], references: [id])
@@ -62,5 +66,6 @@ model Transaction {
   destinationAccount   Account? @relation("TransferDestination", fields: [destinationAccountId], references: [id])
   isOpeningBalance     Boolean  @default(false) @map("is_opening_balance")
 
+  @@unique([provider, providerTransactionId])
   @@map("transactions")
 }
