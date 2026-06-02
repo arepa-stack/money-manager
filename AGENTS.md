@@ -17,3 +17,9 @@ Para optimizar el flujo de trabajo en este repositorio, los agentes deben apoyar
 - **[Engram](https://github.com/Gentleman-Programming/engram)**: Guarda resúmenes de sesión proactivamente (`mem_save`) tras completar hitos importantes. Recupera el contexto utilizando `mem_context` si el estado de la sesión se reinicia o se pierde.
 - **[NotebookLM MCP](https://github.com/jacob-bd/notebooklm-mcp-cli)**: Empléalo para interactuar con libretas externas asociadas al proyecto, consultando fuentes y documentación para guiar las reglas de negocio de la aplicación.
 
+# Sincronización de Memorias (Engram) para Agentes
+
+Al iniciar y finalizar tu trabajo en este repositorio, debes seguir las siguientes pautas:
+*   **Al iniciar la sesión**: Asegúrate de que las memorias locales del repositorio estén importadas en tu base de datos SQLite ejecutando `engram sync --import` (si detectas que hay nuevos chunks en la carpeta `.engram/chunks/` que no están indexados localmente).
+*   **Al finalizar la sesión**: Después de crear tu resumen final con `mem_session_summary`, ejecuta `engram sync` para exportar las observaciones nuevas generadas durante el desarrollo a la carpeta `.engram/` local. Esto garantiza que las observaciones estén listas para ser confirmadas y subidas a Git por el usuario.
+

@@ -42,3 +42,29 @@ Este proyecto está configurado para integrarse con asistentes de desarrollo bas
 *   **[Codegraph](https://github.com/colbymchenry/codegraph)**: Indexador de código local que analiza el árbol de sintaxis abstracta (AST) para proveer búsquedas semánticas, grafos de llamadas y análisis de dependencias de forma ultra rápida.
 *   **[Engram](https://github.com/Gentleman-Programming/engram)**: Sistema de memoria persistente para el agente, permitiendo almacenar y recuperar el contexto del proyecto, decisiones de arquitectura y notas a lo largo del tiempo.
 *   **[NotebookLM MCP](https://github.com/jacob-bd/notebooklm-mcp-cli)**: Integración que permite al agente interactuar de forma directa con tus libretas de Google NotebookLM para consultar fuentes de conocimiento y realizar investigaciones.
+
+### Sincronización de Memorias (Engram)
+
+Para compartir y mantener sincronizadas las memorias del agente de desarrollo entre diferentes máquinas o colaboradores, se utiliza la sincronización basada en Git:
+
+1. **Exportar memorias locales a Git**:
+   Ejecuta en tu terminal en la raíz del proyecto:
+   ```bash
+   engram sync
+   ```
+   Esto generará o actualizará archivos comprimidos dentro de la carpeta `.engram/`. Luego, confirma y sube los cambios:
+   ```bash
+   git add .engram/
+   git commit -m "sync: actualizar memorias del agente"
+   git push
+   ```
+
+2. **Importar memorias desde el repositorio**:
+   Al clonar el repositorio o tras hacer `git pull` de cambios con una carpeta `.engram/` actualizada, ejecuta el siguiente comando para importar los chunks de memoria en tu base de datos local SQLite de Engram:
+   ```bash
+   engram sync --import
+   ```
+
+> [!TIP]
+> Si borras la carpeta `.engram/` de forma manual y `engram sync` indica que no hay cambios nuevos, puedes forzar la reconstrucción de los archivos de sincronización limpiando los registros locales en tu base de datos con:
+> `DELETE FROM sync_chunks WHERE target_key = 'local';` en SQLite (o borrando el registro de sync del chunk correspondiente).
