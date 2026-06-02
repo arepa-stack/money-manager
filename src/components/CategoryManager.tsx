@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import ConfirmModal from '@/components/ConfirmModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -115,10 +116,22 @@ function SubcategoryRow({
   sub,
   onRenamed,
   onDeleted,
+  openConfirm,
 }: {
   sub: Subcategory;
   onRenamed: (id: string, newName: string) => void;
   onDeleted: (id: string) => void;
+  openConfirm: (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: {
+      isDestructive?: boolean;
+      confirmText?: string;
+      cancelText?: string;
+      onlyConfirm?: boolean;
+    }
+  ) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -136,25 +149,38 @@ function SubcategoryRow({
     return null;
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar la subcategoría "${sub.name}"?`)) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/subcategories/${sub.id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Error al eliminar la subcategoría');
-      } else {
-        onDeleted(sub.id);
+  const handleDelete = () => {
+    openConfirm(
+      'Eliminar Subcategoría',
+      `¿Estás seguro de que deseas eliminar la subcategoría "${sub.name}"?`,
+      async () => {
+        setDeleting(true);
+        try {
+          const res = await fetch(`/api/subcategories/${sub.id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) {
+            openConfirm(
+              'No se pudo eliminar',
+              data.error || 'Error al eliminar la subcategoría',
+              () => {},
+              { onlyConfirm: true, confirmText: 'Entendido', isDestructive: true }
+            );
+          } else {
+            onDeleted(sub.id);
+          }
+        } catch (e) {
+          console.error(e);
+          openConfirm(
+            'Error de conexión',
+            'Error en la conexión al eliminar.',
+            () => {},
+            { onlyConfirm: true, confirmText: 'Cerrar', isDestructive: true }
+          );
+        } finally {
+          setDeleting(false);
+        }
       }
-    } catch (e) {
-      console.error(e);
-      alert('Error en la conexión al eliminar.');
-    } finally {
-      setDeleting(false);
-    }
+    );
   };
 
   return (
@@ -206,6 +232,7 @@ function CategoryCard({
   onSubcategoryAdded,
   onSubcategoryRenamed,
   onSubcategoryDeleted,
+  openConfirm,
 }: {
   category: Category;
   spendingUsd?: number;
@@ -214,6 +241,17 @@ function CategoryCard({
   onSubcategoryAdded: (catId: string, sub: Subcategory) => void;
   onSubcategoryRenamed: (catId: string, subId: string, newName: string) => void;
   onSubcategoryDeleted: (catId: string, subId: string) => void;
+  openConfirm: (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: {
+      isDestructive?: boolean;
+      confirmText?: string;
+      cancelText?: string;
+      onlyConfirm?: boolean;
+    }
+  ) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editingCat, setEditingCat] = useState(false);
@@ -247,37 +285,60 @@ function CategoryCard({
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Error al guardar la categoría.');
+        openConfirm(
+          'Error al guardar',
+          data.error || 'Error al guardar la categoría.',
+          () => {},
+          { onlyConfirm: true, confirmText: 'Entendido', isDestructive: true }
+        );
       } else {
         onCategoryUpdated(category.id, data.name, data.type, data.budgetUsd);
         setEditingCat(false);
       }
     } catch (err) {
-      alert('Error al conectar con el servidor.');
+      openConfirm(
+        'Error de conexión',
+        'Error al conectar con el servidor.',
+        () => {},
+        { onlyConfirm: true, confirmText: 'Cerrar', isDestructive: true }
+      );
     } finally {
       setSavingCat(false);
     }
   };
 
-  const handleCatDelete = async () => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar la categoría "${category.name}" y todas sus subcategorías?`)) return;
-    setDeletingCat(true);
-    try {
-      const res = await fetch(`/api/categories/${category.id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Error al eliminar la categoría');
-      } else {
-        onCategoryDeleted(category.id);
+  const handleCatDelete = () => {
+    openConfirm(
+      'Eliminar Categoría',
+      `¿Estás seguro de que deseas eliminar la categoría "${category.name}" y todas sus subcategorías?`,
+      async () => {
+        setDeletingCat(true);
+        try {
+          const res = await fetch(`/api/categories/${category.id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) {
+            openConfirm(
+              'No se pudo eliminar',
+              data.error || 'Error al eliminar la categoría',
+              () => {},
+              { onlyConfirm: true, confirmText: 'Entendido', isDestructive: true }
+            );
+          } else {
+            onCategoryDeleted(category.id);
+          }
+        } catch (e) {
+          console.error(e);
+          openConfirm(
+            'Error de conexión',
+            'Error en la conexión al eliminar la categoría.',
+            () => {},
+            { onlyConfirm: true, confirmText: 'Cerrar', isDestructive: true }
+          );
+        } finally {
+          setDeletingCat(false);
+        }
       }
-    } catch (e) {
-      console.error(e);
-      alert('Error en la conexión al eliminar la categoría.');
-    } finally {
-      setDeletingCat(false);
-    }
+    );
   };
 
   const handleAddSubcategory = async (e: React.FormEvent) => {
@@ -466,6 +527,7 @@ function CategoryCard({
                     onSubcategoryRenamed(category.id, subId, newName)
                   }
                   onDeleted={(subId) => onSubcategoryDeleted(category.id, subId)}
+                  openConfirm={openConfirm}
                 />
               ))}
             </div>
@@ -522,6 +584,49 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
   const [creatingCat, setCreatingCat] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+    confirmText?: string;
+    cancelText?: string;
+    onlyConfirm?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: true,
+    confirmText: 'Confirmar',
+    cancelText: 'Cancelar',
+    onlyConfirm: false,
+  });
+
+  const openConfirm = useCallback((
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: {
+      isDestructive?: boolean;
+      confirmText?: string;
+      cancelText?: string;
+      onlyConfirm?: boolean;
+    }
+  ) => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm,
+      isDestructive: options?.isDestructive ?? true,
+      confirmText: options?.confirmText ?? 'Confirmar',
+      cancelText: options?.cancelText ?? 'Cancelar',
+      onlyConfirm: options?.onlyConfirm ?? false,
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -847,6 +952,7 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
                       onSubcategoryAdded={handleSubcategoryAdded}
                       onSubcategoryRenamed={handleSubcategoryRenamed}
                       onSubcategoryDeleted={handleSubcategoryDeleted}
+                      openConfirm={openConfirm}
                     />
                   ))}
                 </div>
@@ -855,6 +961,18 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
           })}
         </div>
       )}
+      
+      <ConfirmModal 
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmState.isDestructive}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        onlyConfirm={confirmState.onlyConfirm}
+      />
     </div>
   );
 }

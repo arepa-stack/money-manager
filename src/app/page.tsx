@@ -14,6 +14,7 @@ import EditTransactionModal from '@/components/EditTransactionModal';
 import TransactionTable from '@/components/TransactionTable';
 import BcvRates from '@/components/BcvRates';
 import CategoryDistribution from '@/components/CategoryDistribution';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface Transaction {
   id: string;
@@ -76,6 +77,20 @@ export default function Dashboard() {
   const [adjustedAccounts, setAdjustedAccounts] = useState<Record<string, boolean>>({});
   const [adjustingAccountId, setAdjustingAccountId] = useState<string | null>(null);
   const [adjustmentValues, setAdjustmentValues] = useState<Record<string, string>>({});
+  
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+    confirmText?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const [visibleColumns, setVisibleColumns] = useState({
     time: true,
@@ -338,31 +353,61 @@ export default function Dashboard() {
     setIsDuplicate(true);
   };
 
-  const handleClearDatabase = async () => {
-
-    if (!window.confirm('¿Estás seguro de que deseas borrar por completo la base de datos local? Se eliminarán todas las transacciones, cuentas y categorías. Esta acción no se puede deshacer.')) {
-      return;
-    }
-    
-    setIsLoadingTxs(true);
-    try {
-      const res = await fetch('/api/db/clear', { method: 'POST' });
-      if (res.ok) {
-        alert('Base de datos limpiada con éxito.');
-        handleClearFilters();
-        fetchTransactions();
-        fetchAccountsList();
-        handleReset();
-        setCurrentTab('import'); // Regresar a pestaña importador al vaciar base de datos
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Error al intentar limpiar la base de datos.');
+  const handleDeleteTransaction = (tx: Transaction) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Eliminar Movimiento',
+      message: '¿Estás seguro de que deseas eliminar permanentemente este movimiento? Se ajustarán los saldos automáticamente.',
+      isDestructive: true,
+      confirmText: 'Eliminar',
+      onConfirm: async () => {
+        try {
+          setIsLoadingTxs(true);
+          const res = await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+          if (res.ok) {
+            fetchTransactions();
+            fetchAccountsList();
+          } else {
+            const data = await res.json();
+            setError(data.error || 'Error al eliminar la transacción.');
+            setIsLoadingTxs(false);
+          }
+        } catch (err: any) {
+          setError('Error de red al eliminar la transacción: ' + err.message);
+          setIsLoadingTxs(false);
+        }
       }
-    } catch (err: any) {
-      setError('Error de red al intentar limpiar la base de datos: ' + err.message);
-    } finally {
-      setIsLoadingTxs(false);
-    }
+    });
+  };
+
+  const handleClearDatabase = () => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Limpiar Base de Datos',
+      message: '¿Estás seguro de que deseas borrar por completo la base de datos local SQLite? Se eliminarán TODAS las transacciones, cuentas y categorías de forma irreversible.',
+      isDestructive: true,
+      confirmText: 'Borrar Todo',
+      onConfirm: async () => {
+        setIsLoadingTxs(true);
+        try {
+          const res = await fetch('/api/db/clear', { method: 'POST' });
+          if (res.ok) {
+            handleClearFilters();
+            fetchTransactions();
+            fetchAccountsList();
+            handleReset();
+            setCurrentTab('import');
+          } else {
+            const data = await res.json();
+            setError(data.error || 'Error al intentar limpiar la base de datos.');
+          }
+        } catch (err: any) {
+          setError('Error de red al intentar limpiar la base de datos: ' + err.message);
+        } finally {
+          setIsLoadingTxs(false);
+        }
+      }
+    });
   };
 
   // Aggregated Stats from loaded (filtered) transactions
@@ -1021,6 +1066,7 @@ export default function Dashboard() {
                   endDate={endDate}
                   onEditTransaction={setEditingTransaction}
                   onDuplicateTransaction={handleDuplicateTransaction}
+                  onDeleteTransaction={handleDeleteTransaction}
                 />
               ) : (
                 <div className="bg-slate-900/20 border border-slate-900 rounded-3xl overflow-hidden backdrop-blur-sm">
@@ -1029,6 +1075,7 @@ export default function Dashboard() {
                     visibleColumns={visibleColumns}
                     onEditTransaction={setEditingTransaction}
                     onDuplicateTransaction={handleDuplicateTransaction}
+                    onDeleteTransaction={handleDeleteTransaction}
                     groupByDate={true}
                   />
                 </div>
@@ -1088,6 +1135,16 @@ export default function Dashboard() {
             onSuccess={handleEditSuccess}
           />
         )}
+        
+        <ConfirmModal 
+          isOpen={confirmState.isOpen}
+          title={confirmState.title}
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+          isDestructive={confirmState.isDestructive}
+          confirmText={confirmState.confirmText}
+        />
       </div>
     </main>
   );

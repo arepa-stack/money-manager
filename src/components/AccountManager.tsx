@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface Account {
   id: string;
@@ -46,6 +47,26 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
   const [editCurrency, setEditCurrency] = useState('USD');
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+    confirmText?: string;
+    cancelText?: string;
+    onlyConfirm?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: true,
+    confirmText: 'Confirmar',
+    cancelText: 'Cancelar',
+    onlyConfirm: false,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,24 +153,47 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
     }
   };
 
-  const handleDelete = async (account: Account) => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar la cuenta "${account.name}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/accounts/${account.id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Error al eliminar la cuenta');
-      } else {
-        setAccounts((prev) => prev.filter((acc) => acc.id !== account.id));
-        onChange?.();
+  const handleDelete = (account: Account) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Eliminar Cuenta',
+      message: `¿Estás seguro de que deseas eliminar la cuenta "${account.name}"?`,
+      isDestructive: true,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      onlyConfirm: false,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/accounts/${account.id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) {
+            setConfirmState({
+              isOpen: true,
+              title: 'No se pudo eliminar',
+              message: data.error || 'Error al eliminar la cuenta',
+              onConfirm: () => {},
+              isDestructive: true,
+              confirmText: 'Entendido',
+              onlyConfirm: true
+            });
+          } else {
+            setAccounts((prev) => prev.filter((acc) => acc.id !== account.id));
+            onChange?.();
+          }
+        } catch (err) {
+          console.error(err);
+          setConfirmState({
+            isOpen: true,
+            title: 'Error de conexión',
+            message: 'Error en la conexión al eliminar la cuenta.',
+            onConfirm: () => {},
+            isDestructive: true,
+            confirmText: 'Cerrar',
+            onlyConfirm: true
+          });
+        }
       }
-    } catch (err) {
-      console.error(err);
-      alert('Error en la conexión al eliminar la cuenta.');
-    }
+    });
   };
 
   const startEdit = (account: Account) => {
@@ -375,6 +419,18 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
           );
         })}
       </div>
+      
+      <ConfirmModal 
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmState.isDestructive}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        onlyConfirm={confirmState.onlyConfirm}
+      />
     </div>
   );
 }

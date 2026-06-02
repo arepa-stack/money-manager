@@ -19,7 +19,12 @@ Para optimizar el flujo de trabajo en este repositorio, los agentes deben apoyar
 
 # Sincronización de Memorias (Engram) para Agentes
 
-Al iniciar y finalizar tu trabajo en este repositorio, debes seguir las siguientes pautas:
-*   **Al iniciar la sesión**: Asegúrate de que las memorias locales del repositorio estén importadas en tu base de datos SQLite ejecutando `engram sync --import` (si detectas que hay nuevos chunks en la carpeta `.engram/chunks/` que no están indexados localmente).
-*   **Al finalizar la sesión**: Después de crear tu resumen final con `mem_session_summary`, ejecuta `engram sync` para exportar las observaciones nuevas generadas durante el desarrollo a la carpeta `.engram/` local. Esto garantiza que las observaciones estén listas para ser confirmadas y subidas a Git por el usuario.
+Al iniciar y finalizar tu trabajo en este repositorio, debes seguir las siguientes pautas para garantizar que el registro se asocie al proyecto `money-manager` (y no a la IDE `"antigravity ide"`):
+*   **Al iniciar la sesión**: 
+    1. Asegúrate de que las memorias locales del repositorio estén importadas en tu base de datos SQLite ejecutando `engram sync --import` (si detectas que hay nuevos chunks en la carpeta `.engram/chunks/` que no están indexados localmente).
+    2. Llama a la herramienta `mem_session_start` pasando como `id` el valor `"manual-save-money-manager"` y en `directory` la ruta absoluta del repositorio de tu área de trabajo (ej. `"C:/Users/User/Documents/Repositorios/personales/money-manager"`). Esto enlazará tu sesión directamente con este proyecto.
+*   **Durante el desarrollo (`mem_save`)**: Pasa siempre de forma explícita el parámetro `"project": "money-manager"`.
+*   **Al finalizar la sesión**: 
+    1. Guarda el resumen final llamando a `mem_session_summary` pasándole como `session_id` el valor `"manual-save-money-manager"`.
+    2. Ejecuta `engram sync` para exportar las observaciones y resúmenes nuevos a la carpeta `.engram/` local. Esto garantiza que las observaciones estén listas para ser confirmadas y subidas a Git por el usuario.
 
