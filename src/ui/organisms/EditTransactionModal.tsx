@@ -121,8 +121,11 @@ export default function EditTransactionModal({
   const [description, setDescription] = useState(
     transaction?.description || ''
   );
+  const [availableNotes, setAvailableNotes] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
 
-  // Load Categories on mount and fetch exchange rates
+  // Load Categories, exchange rates and notes list on mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -155,8 +158,21 @@ export default function EditTransactionModal({
       }
     };
 
+    const fetchNotes = async () => {
+      try {
+        const res = await fetch('/api/transactions/notes');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableNotes(data);
+        }
+      } catch (err) {
+        console.error('Error al cargar notas para autocompletado:', err);
+      }
+    };
+
     fetchCategories();
     fetchRates();
+    fetchNotes();
   }, []);
 
   // Sync BaseAmountUsd automatically when Currency is USD
@@ -225,6 +241,32 @@ export default function EditTransactionModal({
     if (transactionType === 'TRANSFER' && destinationAccountId === newAccountId) {
       const altDest = accounts.find((a) => a.id !== newAccountId);
       setDestinationAccountId(altDest ? altDest.id : '');
+    }
+  };
+
+  // Predict categories, accounts, currencies and amounts based on note
+  const predictFromNote = async (noteText: string) => {
+    if (isEditMode || isDuplicate) return;
+    if (!noteText || noteText.trim() === '') return;
+
+    try {
+      const res = await fetch(`/api/transactions/predict?note=${encodeURIComponent(noteText.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          // Preseleccionar los campos correspondientes a la nota
+          setTransactionType(data.transactionType);
+          setAccountId(data.accountId);
+          setAmount(data.amount);
+          setCurrency(data.currency);
+          setBaseAmountUsd(data.baseAmountUsd);
+          setCategoryId(data.categoryId);
+          setSubcategoryId(data.subcategoryId || '');
+          setDestinationAccountId(data.destinationAccountId || '');
+        }
+      }
+    } catch (err) {
+      console.error('Error al predecir datos desde nota:', err);
     }
   };
 
@@ -611,16 +653,66 @@ export default function EditTransactionModal({
             )}
           </div>
 
-          {/* Nota */}
-          <div className="flex flex-col gap-1.5">
+          {/* Nota con Autocompletado Customizado */}
+          <div className="flex flex-col gap-1.5 relative">
             <label className="text-xs font-semibold text-slate-400">Nota corta</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all outline-none"
-              placeholder="Ej. Almuerzo de negocios"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNote(val);
+                  if (val.trim() === '') {
+                    setFilteredSuggestions([]);
+                    setShowSuggestions(false);
+                  } else {
+                    const filtered = availableNotes.filter((n) =>
+                      n.toLowerCase().includes(val.toLowerCase())
+                    );
+                    setFilteredSuggestions(filtered);
+                    setShowSuggestions(filtered.length > 0);
+                    if (availableNotes.includes(val.trim())) {
+                      predictFromNote(val);
+                    }
+                  }
+                }}
+                onFocus={() => {
+                  const filtered = note.trim() === ''
+                    ? availableNotes.slice(0, 5) // Mostrar últimas 5 notas al hacer foco si está vacío
+                    : availableNotes.filter((n) => n.toLowerCase().includes(note.toLowerCase()));
+                  setFilteredSuggestions(filtered);
+                  setShowSuggestions(filtered.length > 0);
+                }}
+                onBlur={() => {
+                  // Pequeño delay para permitir registrar el click en la sugerencia
+                  setTimeout(() => {
+                    setShowSuggestions(false);
+                    predictFromNote(note);
+                  }, 200);
+                }}
+                className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all outline-none"
+                placeholder="Ej. Almuerzo de negocios"
+              />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-48 overflow-y-auto bg-slate-950 border border-slate-850 rounded-xl shadow-2xl py-1 text-xs divide-y divide-slate-900/50 scrollbar-thin">
+                  {filteredSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setNote(suggestion);
+                        predictFromNote(suggestion);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 text-slate-300 hover:text-indigo-400 hover:bg-slate-900/50 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Descripción */}
