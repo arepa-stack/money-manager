@@ -54,11 +54,11 @@ Este documento es una lista de verificación temporal para dar seguimiento a las
   - **Impacto en UX:** Alto (Visión de salud financiera)
   - **Detalle:** En [CategoryManager.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/organisms/CategoryManager.tsx), agregar un widget superior consolidado de progreso mensual (Presupuesto Total vs. Gasto Real) y un contador destacado con las categorías que están en alerta (>80% de su límite).
 
-- [ ] **9. Sparkline de Tendencia Histórica de Tasas Cambiarias**
-  - **Estado:** ⚪ Pendiente de Selección
+- [x] **9. Sparkline de Tendencia Histórica de Tasas Cambiarias**
+  - **Estado:** 🟢 Completado
   - **Dificultad:** Media
   - **Impacto en UX:** Medio-Alto (Visualización de datos)
-  - **Detalle:** En [BcvRates.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/organisms/BcvRates.tsx), dibujar un minigráfico de tendencia (Sparkline SVG nativo puro) con la evolución de las tasas de cambio del Dólar Oficial y Paralelo de los últimos 7 registros históricos.
+  - **Detalle:** En [BcvRates.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/organisms/BcvRates.tsx), se dibuja un minigráfico de tendencia (Sparkline SVG nativo puro) con la evolución de cada tasa (USD Oficial, USD Paralelo, EUR Oficial, EUR Paralelo) basado en los últimos 7 registros históricos. El átomo [Sparkline.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/atoms/Sparkline.tsx) es reutilizable y no requiere dependencias externas.
 
 - [x] **10. Notificación Toast con Acción "Deshacer" (Undo) al Eliminar**
   - **Estado:** 🟢 Completado

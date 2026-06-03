@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import QuickConverter from '@/ui/molecules/QuickConverter';
+import Sparkline from '@/ui/atoms/Sparkline';
 
 interface BcvHistoryItem {
   id: string;
@@ -163,6 +164,15 @@ export default function BcvRates() {
       {/* 4 Exchange Rates Cards Grid */}
       {bcvData && (
         <>
+          {(() => {
+            // Últimos 7 registros del historial, invertidos para orden cronológico ascendente
+            const histSlice = [...bcvData.history].reverse().slice(-7);
+            const usdOficialHistory = histSlice.map(h => h.usdOficial);
+            const usdParaleloHistory = histSlice.filter(h => h.usdParalelo > 0).map(h => h.usdParalelo);
+            const eurOficialHistory = histSlice.map(h => h.eurOficial);
+            const eurParaleloHistory = histSlice.filter(h => h.eurParalelo > 0).map(h => h.eurParalelo);
+
+            return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* USD OFICIAL */}
@@ -184,13 +194,26 @@ export default function BcvRates() {
                 </div>
                 {renderVariationBadge(bcvData.usdOficialVar)}
               </div>
-              <div className="mt-5 space-y-0.5">
+              <div className="mt-4 space-y-0.5">
                 <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Tasa de Venta</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-100 tracking-tight">
-                    {bcvData.usdOficial.toFixed(4)}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                <div className="flex items-end justify-between gap-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {bcvData.usdOficial.toFixed(4)}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                  </div>
+                  {usdOficialHistory.length >= 2 && (
+                    <div className="opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Sparkline
+                        values={usdOficialHistory}
+                        width={80}
+                        height={32}
+                        color="#34d399"
+                        fillColor="rgba(52,211,153,0.10)"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -214,13 +237,26 @@ export default function BcvRates() {
                 </div>
                 {renderVariationBadge(bcvData.usdParaleloVar)}
               </div>
-              <div className="mt-5 space-y-0.5">
+              <div className="mt-4 space-y-0.5">
                 <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Tasa de Venta</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-100 tracking-tight">
-                    {bcvData.usdParalelo > 0 ? bcvData.usdParalelo.toFixed(4) : 'N/A'}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                <div className="flex items-end justify-between gap-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {bcvData.usdParalelo > 0 ? bcvData.usdParalelo.toFixed(4) : 'N/A'}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                  </div>
+                  {usdParaleloHistory.length >= 2 && (
+                    <div className="opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Sparkline
+                        values={usdParaleloHistory}
+                        width={80}
+                        height={32}
+                        color="#fbbf24"
+                        fillColor="rgba(251,191,36,0.10)"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -242,13 +278,26 @@ export default function BcvRates() {
                 </div>
                 {renderVariationBadge(bcvData.eurOficialVar)}
               </div>
-              <div className="mt-5 space-y-0.5">
+              <div className="mt-4 space-y-0.5">
                 <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Tasa de Venta</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-100 tracking-tight">
-                    {bcvData.eurOficial.toFixed(4)}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                <div className="flex items-end justify-between gap-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {bcvData.eurOficial.toFixed(4)}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                  </div>
+                  {eurOficialHistory.length >= 2 && (
+                    <div className="opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Sparkline
+                        values={eurOficialHistory}
+                        width={80}
+                        height={32}
+                        color="#818cf8"
+                        fillColor="rgba(129,140,248,0.10)"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -270,18 +319,33 @@ export default function BcvRates() {
                 </div>
                 {renderVariationBadge(bcvData.eurParaleloVar)}
               </div>
-              <div className="mt-5 space-y-0.5">
+              <div className="mt-4 space-y-0.5">
                 <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Tasa de Venta</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-100 tracking-tight">
-                    {bcvData.eurParalelo > 0 ? bcvData.eurParalelo.toFixed(4) : 'N/A'}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                <div className="flex items-end justify-between gap-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {bcvData.eurParalelo > 0 ? bcvData.eurParalelo.toFixed(4) : 'N/A'}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">Bs.</span>
+                  </div>
+                  {eurParaleloHistory.length >= 2 && (
+                    <div className="opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Sparkline
+                        values={eurParaleloHistory}
+                        width={80}
+                        height={32}
+                        color="#a78bfa"
+                        fillColor="rgba(167,139,250,0.10)"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
           </div>
+            );
+          })()}
 
           {/* Quick Converter Section */}
           <QuickConverter bcvData={bcvData} />
