@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { formatCents } from '@/lib/moneyUtils';
 
 interface Transaction {
@@ -53,6 +53,7 @@ export default function TransactionTable({
   onDeleteTransaction,
   groupByDate = false,
 }: TransactionTableProps) {
+  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const activeColumnsCount = Object.values(visibleColumns).filter(Boolean).length;
   const hasActions = !!(onEditTransaction || onDuplicateTransaction || onDeleteTransaction);
   const totalColumnsCount = activeColumnsCount + (hasActions ? 1 : 0);
@@ -202,92 +203,139 @@ export default function TransactionTable({
     </tr>
   );
 
-  const renderMobileCard = (t: Transaction) => (
-    <div key={t.id} className="bg-slate-900/15 border border-slate-900/50 p-4 rounded-2xl flex items-center justify-between gap-4 hover:bg-slate-900/35 transition-colors">
-      <div className="flex-1 min-w-0 space-y-1">
-        {/* Superior: Cuenta y Categoría */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-bold text-slate-200 text-sm">{t.account.name}</span>
-          <span className="text-slate-600 text-[10px]">•</span>
-          <span className="text-slate-400 text-xs truncate">
-            {t.transactionType === 'TRANSFER' && t.destinationAccount
-              ? `Transferencia (→ ${t.destinationAccount.name})`
-              : t.category.name}
-            {t.subcategory && ` › ${t.subcategory.name}`}
-          </span>
+  const renderMobileCard = (t: Transaction) => {
+    const isExpanded = expandedTxId === t.id;
+    return (
+      <div 
+        key={t.id} 
+        onClick={() => setExpandedTxId(isExpanded ? null : t.id)}
+        className="bg-slate-900/15 border border-slate-900/50 p-4 rounded-2xl flex flex-col gap-3 hover:bg-slate-900/35 transition-colors cursor-pointer select-none"
+      >
+        {/* Cabecera de la tarjeta: Siempre visible */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0 space-y-1">
+            {/* Superior: Cuenta y Categoría */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-bold text-slate-200 text-sm">{t.account.name}</span>
+              <span className="text-slate-600 text-[10px]">•</span>
+              <span className="text-slate-400 text-xs truncate">
+                {t.transactionType === 'TRANSFER' && t.destinationAccount
+                  ? `Transferencia (→ ${t.destinationAccount.name})`
+                  : t.category.name}
+                {t.subcategory && ` › ${t.subcategory.name}`}
+              </span>
+            </div>
+
+            {/* Inferior: Hora y Nota */}
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>{new Date(t.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              {t.note && (
+                <>
+                  <span className="text-slate-700">•</span>
+                  <span className="truncate max-w-[150px] italic" title={t.note}>{t.note}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Importe y Chevron */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-right">
+              <span className={`font-bold text-sm ${
+                t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-200'
+              }`}>
+                {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
+                {formatCents(t.amount)}
+              </span>
+              <span className="text-[10px] text-slate-500 block">{t.currency}</span>
+            </div>
+            
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={2.5} 
+              stroke="currentColor" 
+              className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
         </div>
 
-        {/* Inferior: Hora y Nota */}
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span>{new Date(t.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          {t.note && (
-            <>
-              <span className="text-slate-700">•</span>
-              <span className="truncate max-w-[150px] italic" title={t.note}>{t.note}</span>
-            </>
-          )}
-        </div>
+        {/* Sección Expandible: Detalles adicionales y Acciones */}
+        {isExpanded && (
+          <div 
+            className="border-t border-slate-900/60 pt-3.5 mt-1.5 space-y-4 animate-fade-in"
+            onClick={(e) => e.stopPropagation() /* Evitar colapsar al hacer clic en las acciones */}
+          >
+            {/* Detalles de la transacción */}
+            <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs">
+              <div>
+                <span className="text-slate-500 block font-semibold">Equivalente USD</span>
+                <span className="text-slate-350 font-bold">${formatCents(t.baseAmountUsd)} USD</span>
+              </div>
+              {t.currency.toUpperCase() !== 'USD' && t.baseAmountUsd > 0 && (
+                <div>
+                  <span className="text-slate-500 block font-semibold">Tasa de Cambio</span>
+                  <span className="text-slate-350 font-bold">
+                    {t.currency.toUpperCase() === 'EUR'
+                      ? `${(t.baseAmountUsd / t.amount).toFixed(4)} $/€`
+                      : `${(t.amount / t.baseAmountUsd).toFixed(2)} ${t.currency.toUpperCase()}/$`}
+                  </span>
+                </div>
+              )}
+              {t.description && (
+                <div className="col-span-2">
+                  <span className="text-slate-500 block font-semibold">Descripción</span>
+                  <p className="text-slate-350 italic mt-0.5 whitespace-pre-wrap">{t.description}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Barra de Acciones Móviles */}
+            {hasActions && (
+              <div className="flex flex-wrap gap-2.5 pt-2">
+                {onDuplicateTransaction && (
+                  <button
+                    onClick={() => onDuplicateTransaction(t)}
+                    className="flex-1 min-w-[90px] py-2 px-3 rounded-xl bg-slate-900 border border-slate-850 hover:border-slate-700 text-slate-300 hover:text-emerald-400 active:scale-98 transition-all font-semibold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v8.25A2.25 2.25 0 0 0 6 16.5h2.25m8.25-8.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-7.5A2.25 2.25 0 0 1 8.25 18v-1.5m8.25-8.25h-8.25M8.25 16.5H18" />
+                    </svg>
+                    Duplicar
+                  </button>
+                )}
+                {onEditTransaction && (
+                  <button
+                    onClick={() => onEditTransaction(t)}
+                    className="flex-1 min-w-[90px] py-2 px-3 rounded-xl bg-slate-900 border border-slate-850 hover:border-slate-700 text-slate-300 hover:text-indigo-400 active:scale-98 transition-all font-semibold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                    </svg>
+                    Editar
+                  </button>
+                )}
+                {onDeleteTransaction && (
+                  <button
+                    onClick={() => onDeleteTransaction(t)}
+                    className="flex-1 min-w-[90px] py-2 px-3 rounded-xl bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/20 text-rose-400 hover:border-rose-500/40 active:scale-98 transition-all font-semibold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Derecha: Importe y acciones */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <div className="text-right">
-          <span className={`font-bold text-sm ${
-            t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-200'
-          }`}>
-            {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
-            {formatCents(t.amount)}
-          </span>
-          <span className="text-[10px] text-slate-500 block">{t.currency}</span>
-          {t.currency.toUpperCase() !== 'USD' && t.baseAmountUsd > 0 && (
-            <span className="text-[9px] text-slate-500 block mt-0.5 font-medium">
-              {t.currency.toUpperCase() === 'EUR'
-                ? `${(t.baseAmountUsd / t.amount).toFixed(4)} $/€`
-                : `${(t.amount / t.baseAmountUsd).toFixed(2)} ${t.currency.toUpperCase()}/$`}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          {onDuplicateTransaction && (
-            <button
-              onClick={() => onDuplicateTransaction(t)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-850 text-slate-400 hover:text-emerald-400 hover:border-slate-750 cursor-pointer transition-all active:scale-95 flex items-center justify-center shrink-0"
-              title="Duplicar transacción"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v8.25A2.25 2.25 0 0 0 6 16.5h2.25m8.25-8.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-7.5A2.25 2.25 0 0 1 8.25 18v-1.5m8.25-8.25h-8.25M8.25 16.5H18" />
-              </svg>
-            </button>
-          )}
-
-          {onEditTransaction && (
-            <button
-              onClick={() => onEditTransaction(t)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-slate-750 cursor-pointer transition-all active:scale-95 flex items-center justify-center shrink-0"
-              title="Editar transacción"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-              </svg>
-            </button>
-          )}
-
-          {onDeleteTransaction && (
-            <button
-              onClick={() => onDeleteTransaction(t)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-850 text-slate-400 hover:text-rose-400 hover:border-slate-750 cursor-pointer transition-all active:scale-95 flex items-center justify-center shrink-0"
-              title="Eliminar transacción"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderMobileList = () => {
     if (!groupByDate) {

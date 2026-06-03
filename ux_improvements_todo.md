@@ -19,8 +19,8 @@ Este documento es una lista de verificación temporal para dar seguimiento a las
   - **Impacto en UX:** Muy Alto (Eficiencia al registrar movimientos)
   - **Detalle:** En [EditTransactionModal.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/organisms/EditTransactionModal.tsx), al comenzar a escribir o seleccionar una nota, cargar/sugerir automáticamente la categoría anterior, la cuenta habitual y el último monto registrado.
 
-- [ ] **3. Diseño Mobile-First en Tablas de Transacciones**
-  - **Estado:** 🔴 Pendiente
+- [x] **3. Diseño Mobile-First en Tablas de Transacciones**
+  - **Estado:** 🟢 Completado
   - **Dificultad:** Media-Alta
   - **Impacto en UX:** Alto (Usabilidad móvil)
   - **Detalle:** En [TransactionTable.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/organisms/TransactionTable.tsx), implementar una vista colapsable en forma de tarjetas individuales en pantallas pequeñas (`< md`) para evitar scroll horizontal u ocultación excesiva de información.
