@@ -16,6 +16,7 @@ import BcvTab from '@/ui/pages/BcvTab';
 import AuditTab from '@/ui/pages/AuditTab';
 
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 interface Transaction {
   id: string;
@@ -35,14 +36,6 @@ interface Transaction {
   subcategory: { name: string } | null;
   destinationAccount: { name: string } | null;
 }
-
-// Timezone-safe local date YYYY-MM-DD formatter
-const getLocalDateString = (date: Date) => {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
 
 export default function DashboardLayout() {
   const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit'>('balances');

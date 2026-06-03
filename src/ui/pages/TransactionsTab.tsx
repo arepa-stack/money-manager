@@ -8,6 +8,7 @@ import TransactionTable from '@/ui/organisms/TransactionTable';
 import LoadingSpinner from '@/ui/atoms/LoadingSpinner';
 import EmptyState from '@/ui/atoms/EmptyState';
 import { formatCents } from '@/lib/moneyUtils';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 interface Transaction {
   id: string;
@@ -78,13 +79,6 @@ interface TransactionsTabProps {
   totalIncomeUsd: number;
   totalExpenseUsd: number;
 }
-
-const getLocalDateString = (date: Date) => {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
 
 export default function TransactionsTab({
   transactions,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { calculateVesToUsd, calculateEurToUsd } from '@/lib/exchangeUtils';
 
 interface Subcategory {
   id: string;
@@ -507,10 +508,10 @@ export default function EditTransactionModal({
                           </div>
                           <button
                             type="button"
-                            onClick={() => setBaseAmountUsd((parseFloat(String(amount)) / rates.usdOficial).toFixed(2))}
+                            onClick={() => setBaseAmountUsd(calculateVesToUsd(parseFloat(String(amount)), rates.usdOficial).toFixed(2))}
                             className="px-2.5 py-1.5 font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all active:scale-95 text-[10px] cursor-pointer"
                           >
-                            ${(parseFloat(String(amount)) / rates.usdOficial).toFixed(2)} USD
+                            ${calculateVesToUsd(parseFloat(String(amount)), rates.usdOficial).toFixed(2)} USD
                           </button>
                         </div>
                       )}
@@ -522,10 +523,10 @@ export default function EditTransactionModal({
                           </div>
                           <button
                             type="button"
-                            onClick={() => setBaseAmountUsd((parseFloat(String(amount)) / rates.usdParalelo).toFixed(2))}
+                            onClick={() => setBaseAmountUsd(calculateVesToUsd(parseFloat(String(amount)), rates.usdParalelo).toFixed(2))}
                             className="px-2.5 py-1.5 font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all active:scale-95 text-[10px] cursor-pointer"
                           >
-                            ${(parseFloat(String(amount)) / rates.usdParalelo).toFixed(2)} USD
+                            ${calculateVesToUsd(parseFloat(String(amount)), rates.usdParalelo).toFixed(2)} USD
                           </button>
                         </div>
                       )}
@@ -541,10 +542,10 @@ export default function EditTransactionModal({
                           </div>
                           <button
                             type="button"
-                            onClick={() => setBaseAmountUsd((parseFloat(String(amount)) * (rates.eurOficial / rates.usdOficial)).toFixed(2))}
+                            onClick={() => setBaseAmountUsd(calculateEurToUsd(parseFloat(String(amount)), rates.eurOficial, rates.usdOficial).toFixed(2))}
                             className="px-2.5 py-1.5 font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all active:scale-95 text-[10px] cursor-pointer"
                           >
-                            ${(parseFloat(String(amount)) * (rates.eurOficial / rates.usdOficial)).toFixed(2)} USD
+                            ${calculateEurToUsd(parseFloat(String(amount)), rates.eurOficial, rates.usdOficial).toFixed(2)} USD
                           </button>
                         </div>
                       )}
@@ -556,10 +557,10 @@ export default function EditTransactionModal({
                           </div>
                           <button
                             type="button"
-                            onClick={() => setBaseAmountUsd((parseFloat(String(amount)) * (rates.eurParalelo / rates.usdParalelo)).toFixed(2))}
+                            onClick={() => setBaseAmountUsd(calculateEurToUsd(parseFloat(String(amount)), rates.eurParalelo, rates.usdParalelo).toFixed(2))}
                             className="px-2.5 py-1.5 font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all active:scale-95 text-[10px] cursor-pointer"
                           >
-                            ${(parseFloat(String(amount)) * (rates.eurParalelo / rates.usdParalelo)).toFixed(2)} USD
+                            ${calculateEurToUsd(parseFloat(String(amount)), rates.eurParalelo, rates.usdParalelo).toFixed(2)} USD
                           </button>
                         </div>
                       )}

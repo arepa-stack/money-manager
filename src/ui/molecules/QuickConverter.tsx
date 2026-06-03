@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { convertAmount, convertAmountReverse, formatConversionResult } from '@/lib/exchangeUtils';
 
 interface BcvHistoryItem {
   id: string;
@@ -78,12 +79,8 @@ export default function QuickConverter({ bcvData }: QuickConverterProps) {
     const rateFrom = getRate(from);
     const rateTo = getRate(to);
 
-    // Formula: (monto * tasa_origen) / tasa_destino
-    const result = (num * rateFrom) / rateTo;
-
-    // Decimals based on currency: Bs gets 2 decimals, foreign values get 2 or 4 decimals depending on scale
-    const decimals = to === 'VES' ? 2 : result < 1 ? 4 : 2;
-    setAmountTo(result.toFixed(decimals));
+    const result = convertAmount(num, rateFrom, rateTo);
+    setAmountTo(formatConversionResult(result, to));
   };
 
   // Convert To -> From
@@ -96,10 +93,8 @@ export default function QuickConverter({ bcvData }: QuickConverterProps) {
     const rateFrom = getRate(from);
     const rateTo = getRate(to);
 
-    // Formula: (monto * tasa_destino) / tasa_origen
-    const result = (num * rateTo) / rateFrom;
-    const decimals = from === 'VES' ? 2 : result < 1 ? 4 : 2;
-    setAmountFrom(result.toFixed(decimals));
+    const result = convertAmountReverse(num, rateFrom, rateTo);
+    setAmountFrom(formatConversionResult(result, from));
   };
 
   // Recalculate when rates or selected currencies change
