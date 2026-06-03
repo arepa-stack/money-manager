@@ -6,6 +6,8 @@ export interface ToastMessage {
   id: string;
   message: string;
   type: 'success' | 'error' | 'info';
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 interface ToastContainerProps {
@@ -66,15 +68,29 @@ export default function ToastContainer({ toasts, onClose }: ToastContainerProps)
               <span className="truncate pr-2 leading-relaxed">{toast.message}</span>
             </div>
             
-            <button
-              onClick={() => onClose(toast.id)}
-              className="p-1 rounded-lg text-slate-500 hover:text-slate-250 hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all cursor-pointer shrink-0"
-              title="Cerrar notificación"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {toast.actionLabel && toast.onAction && (
+                <button
+                  onClick={() => {
+                    toast.onAction?.();
+                    onClose(toast.id);
+                  }}
+                  className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/30 rounded-lg transition-all cursor-pointer select-none"
+                >
+                  {toast.actionLabel}
+                </button>
+              )}
+              
+              <button
+                onClick={() => onClose(toast.id)}
+                className="p-1 rounded-lg text-slate-500 hover:text-slate-250 hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all cursor-pointer"
+                title="Cerrar notificación"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         );
       })}

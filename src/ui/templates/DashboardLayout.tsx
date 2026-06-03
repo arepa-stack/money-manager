@@ -36,6 +36,7 @@ interface Transaction {
   category: { name: string };
   subcategory: { name: string } | null;
   destinationAccount: { name: string } | null;
+  isOpeningBalance?: boolean;
 }
 
 export default function DashboardLayout() {
@@ -85,12 +86,17 @@ export default function DashboardLayout() {
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' | 'info' = 'success',
+    actionLabel?: string,
+    onAction?: () => void
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type, actionLabel, onAction }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3500);
+    }, 4500);
   };
 
   const [visibleColumns, setVisibleColumns] = useState({
@@ -267,7 +273,46 @@ export default function DashboardLayout() {
           if (res.ok) {
             fetchTransactions();
             fetchAccountsList();
-            showToast('Movimiento eliminado correctamente.', 'success');
+            showToast(
+              'Movimiento eliminado correctamente.',
+              'success',
+              'Deshacer',
+              async () => {
+                try {
+                  setIsLoadingTxs(true);
+                  const restoreRes = await fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      transactionDate: tx.transactionDate,
+                      accountId: tx.accountId,
+                      transactionType: tx.transactionType,
+                      amount: tx.amount / 100,
+                      currency: tx.currency,
+                      baseAmountUsd: tx.baseAmountUsd / 100,
+                      categoryId: tx.categoryId,
+                      subcategoryId: tx.subcategoryId,
+                      destinationAccountId: tx.destinationAccountId,
+                      note: tx.note,
+                      description: tx.description,
+                      isOpeningBalance: tx.isOpeningBalance
+                    })
+                  });
+                  if (restoreRes.ok) {
+                    fetchTransactions();
+                    fetchAccountsList();
+                    showToast('Movimiento restaurado con éxito.', 'success');
+                  } else {
+                    const data = await restoreRes.json();
+                    showToast(data.error || 'Error al restaurar la transacción.', 'error');
+                  }
+                } catch (err: any) {
+                  showToast('Error de red al restaurar la transacción.', 'error');
+                } finally {
+                  setIsLoadingTxs(false);
+                }
+              }
+            );
           } else {
             const data = await res.json();
             setError(data.error || 'Error al eliminar la transacción.');

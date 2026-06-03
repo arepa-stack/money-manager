@@ -20,6 +20,7 @@ interface Transaction {
   category: { name: string };
   subcategory: { name: string } | null;
   destinationAccount: { name: string } | null;
+  isOpeningBalance?: boolean;
 }
 
 interface TransactionTableProps {

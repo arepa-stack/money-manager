@@ -34,4 +34,29 @@ describe('ToastContainer', () => {
     fireEvent.click(closeButtons[0]);
     expect(handleClose).toHaveBeenCalledWith('1');
   });
+
+  it('should render action button and trigger onAction and onClose when clicked', () => {
+    const handleAction = vi.fn();
+    const handleClose = vi.fn();
+    const toastWithAction: ToastMessage[] = [
+      {
+        id: '4',
+        message: 'Elemento eliminado',
+        type: 'success',
+        actionLabel: 'Deshacer',
+        onAction: handleAction
+      }
+    ];
+
+    render(<ToastContainer toasts={toastWithAction} onClose={handleClose} />);
+    
+    expect(screen.getByText('Elemento eliminado')).toBeInTheDocument();
+    const actionButton = screen.getByRole('button', { name: 'Deshacer' });
+    expect(actionButton).toBeInTheDocument();
+
+    fireEvent.click(actionButton);
+    
+    expect(handleAction).toHaveBeenCalled();
+    expect(handleClose).toHaveBeenCalledWith('4');
+  });
 });
