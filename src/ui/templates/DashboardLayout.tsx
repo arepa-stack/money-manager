@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import TabButton from '@/ui/atoms/TabButton';
 import ErrorAlert from '@/ui/atoms/ErrorAlert';
 import ConfirmModal from '@/ui/atoms/ConfirmModal';
+import ToastContainer, { ToastMessage } from '@/ui/molecules/ToastContainer';
 import EditTransactionModal from '@/ui/organisms/EditTransactionModal';
 
 // Pages
@@ -81,6 +82,16 @@ export default function DashboardLayout() {
     message: '',
     onConfirm: () => {},
   });
+
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+  };
 
   const [visibleColumns, setVisibleColumns] = useState({
     time: true,
@@ -233,11 +244,13 @@ export default function DashboardLayout() {
   const handleEditSuccess = () => {
     fetchTransactions();
     fetchAccountsList();
+    showToast('Movimiento registrado/actualizado con éxito.', 'success');
   };
 
   const handleDuplicateTransaction = (tx: Transaction) => {
     setEditingTransaction(tx);
     setIsDuplicate(true);
+    showToast('Movimiento cargado en el editor para duplicar.', 'info');
   };
 
   const handleDeleteTransaction = (tx: Transaction) => {
@@ -254,13 +267,16 @@ export default function DashboardLayout() {
           if (res.ok) {
             fetchTransactions();
             fetchAccountsList();
+            showToast('Movimiento eliminado correctamente.', 'success');
           } else {
             const data = await res.json();
             setError(data.error || 'Error al eliminar la transacción.');
+            showToast(data.error || 'Error al eliminar la transacción.', 'error');
             setIsLoadingTxs(false);
           }
         } catch (err: any) {
           setError('Error de red al eliminar la transacción: ' + err.message);
+          showToast('Error de red al eliminar la transacción.', 'error');
           setIsLoadingTxs(false);
         } finally {
           setConfirmState(prev => ({ ...prev, isOpen: false }));
@@ -289,12 +305,15 @@ export default function DashboardLayout() {
             setAnalysisResult(null);
             setExecuteResult(null);
             setCurrentTab('import');
+            showToast('Base de datos SQLite restablecida por completo.', 'success');
           } else {
             const data = await res.json();
             setError(data.error || 'Error al intentar limpiar la base de datos.');
+            showToast('Error al intentar limpiar la base de datos.', 'error');
           }
         } catch (err: any) {
           setError('Error de red al intentar limpiar la base de datos: ' + err.message);
+          showToast('Error de red al intentar limpiar la base de datos.', 'error');
         } finally {
           setIsLoadingTxs(false);
           setConfirmState(prev => ({ ...prev, isOpen: false }));
@@ -395,6 +414,7 @@ export default function DashboardLayout() {
               setInitialModalType(actionType);
               setIsCreateModalOpen(true);
             }}
+            showToast={showToast}
           />
         )}
 
@@ -453,6 +473,7 @@ export default function DashboardLayout() {
             handleClearFilters={handleClearFilters}
             setCurrentTab={setCurrentTab}
             setError={setError}
+            showToast={showToast}
           />
         )}
 
@@ -512,6 +533,11 @@ export default function DashboardLayout() {
           onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
           isDestructive={confirmState.isDestructive}
           confirmText={confirmState.confirmText}
+        />
+
+        <ToastContainer 
+          toasts={toasts}
+          onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))}
         />
       </div>
     </main>

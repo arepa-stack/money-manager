@@ -41,3 +41,20 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #334155 transparent;
 }
+
+/* Animations utility */
+@keyframes slide-in-up {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

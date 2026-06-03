@@ -19,9 +19,10 @@ interface AccountBalance {
 interface AccountBalancesProps {
   onSelectAccount?: (accountId: string) => void;
   onQuickAction?: (actionType: 'INCOME' | 'EXPENSE' | 'TRANSFER') => void;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export default function AccountBalances({ onSelectAccount, onQuickAction }: AccountBalancesProps) {
+export default function AccountBalances({ onSelectAccount, onQuickAction, showToast }: AccountBalancesProps) {
   const [balances, setBalances] = useState<AccountBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +89,7 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
       setReconcileAccountId(null);
       setReconcileTarget('');
       fetchBalances();
+      showToast?.('Saldo de la cuenta conciliado con éxito.', 'success');
     } catch (err: any) {
       setErrorModal({
         isOpen: true,

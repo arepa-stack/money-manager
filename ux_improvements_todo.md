@@ -32,13 +32,13 @@ Este documento es una lista de verificación temporal para dar seguimiento a las
   - **Detalle:** Crear loaders visuales que imiten la estructura de las tarjetas de saldos y las filas de la tabla de transacciones durante la consulta de datos en la API.
 
 - [ ] **5. Selector de Moneda Global en Tiempo Real**
-  - **Estado:** 🔴 Pendiente
+  - **Estado:** 🟡 Despriorizado (Pospuesto por complejidad de tasas cruzadas históricas)
   - **Dificultad:** Alta
   - **Impacto en UX:** Alto (Facilidad de análisis)
   - **Detalle:** Agregar un control interactivo (USD/VES/EUR) en el header de [DashboardLayout.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/templates/DashboardLayout.tsx) para convertir dinámicamente todos los saldos mostrados y movimientos según las tasas de cambio de referencia del día.
 
-- [ ] **6. Sistema de Notificaciones Toast Flotantes**
-  - **Estado:** 🔴 Pendiente
+- [x] **6. Sistema de Notificaciones Toast Flotantes**
+  - **Estado:** 🟢 Completado
   - **Dificultad:** Media
   - **Impacto en UX:** Medio-Alto (Retroalimentación inmediata)
   - **Detalle:** Implementar un gestor ligero de notificaciones Toast no bloqueantes para confirmar acciones de éxito rápidas como duplicar movimientos, guardar ediciones o refrescar tasas.

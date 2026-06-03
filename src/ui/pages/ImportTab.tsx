@@ -23,6 +23,7 @@ interface ImportTabProps {
   handleClearFilters: () => void;
   setCurrentTab: (tab: 'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit') => void;
   setError: (err: string | null) => void;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export default function ImportTab({
@@ -42,6 +43,7 @@ export default function ImportTab({
   handleClearFilters,
   setCurrentTab,
   setError,
+  showToast,
 }: ImportTabProps) {
   
   // Local states for adjustments (success screen)
@@ -75,6 +77,7 @@ export default function ImportTab({
     fetchAccountsList();
     fetchAvailableNotes();
     setError(null);
+    showToast?.(`Importación completada. Insertados: ${result.totalInserted}, Duplicados: ${result.totalSkipped}.`, 'success');
   };
 
   const handleCancel = () => {
@@ -110,6 +113,7 @@ export default function ImportTab({
       // Refrescar transacciones y cuentas
       fetchTransactions();
       fetchAccountsList();
+      showToast?.('Ajuste de saldo aplicado con éxito.', 'success');
     } catch (err: any) {
       setError(err.message || 'Error de red al aplicar el ajuste.');
     } finally {
