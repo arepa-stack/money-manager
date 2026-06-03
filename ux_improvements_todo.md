@@ -25,8 +25,8 @@ Este documento es una lista de verificación temporal para dar seguimiento a las
   - **Impacto en UX:** Alto (Usabilidad móvil)
   - **Detalle:** En [TransactionTable.tsx](file:///c:/Users/User/Documents/Repositorios/personales/money-manager/src/ui/organisms/TransactionTable.tsx), implementar una vista colapsable en forma de tarjetas individuales en pantallas pequeñas (`< md`) para evitar scroll horizontal u ocultación excesiva de información.
 
-- [ ] **4. Skeleton Loaders para Transiciones de Carga**
-  - **Estado:** 🔴 Pendiente
+- [x] **4. Skeleton Loaders para Transiciones de Carga**
+  - **Estado:** 🟢 Completado
   - **Dificultad:** Media
   - **Impacto en UX:** Alto (Sensación de velocidad y estética premium)
   - **Detalle:** Crear loaders visuales que imiten la estructura de las tarjetas de saldos y las filas de la tabla de transacciones durante la consulta de datos en la API.

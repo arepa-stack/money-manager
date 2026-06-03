@@ -6,6 +6,7 @@ import CategoryDistribution from '@/ui/molecules/CategoryDistribution';
 import CalendarView from '@/ui/organisms/CalendarView';
 import TransactionTable from '@/ui/organisms/TransactionTable';
 import LoadingSpinner from '@/ui/atoms/LoadingSpinner';
+import TableSkeleton from '@/ui/atoms/TableSkeleton';
 import EmptyState from '@/ui/atoms/EmptyState';
 import { formatCents } from '@/lib/moneyUtils';
 import { getLocalDateString } from '@/lib/dateUtils';
@@ -258,7 +259,7 @@ export default function TransactionsTab({
         </div>
 
         {isLoadingTxs ? (
-          <LoadingSpinner message="Cargando transacciones..." />
+          <TableSkeleton />
         ) : transactions.length === 0 ? (
           <EmptyState
             title="No se encontraron movimientos"
