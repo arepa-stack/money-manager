@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import QuickConverter from './QuickConverter';
+import QuickConverter from '@/ui/molecules/QuickConverter';
 
 interface BcvHistoryItem {
   id: string;
@@ -73,7 +73,7 @@ export default function BcvRates() {
 
     if (isPositive) {
       return (
-        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 animate-pulse">
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-450 animate-pulse">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
             <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 01.919-.53l4.75 1.5a.75.75 0 01.53.919l-1.5 4.75a.75.75 0 11-1.429-.452l.968-3.064-10.428 10.43a.75.75 0 11-1.06-1.06l10.43-10.428-3.064.968a.75.75 0 01-.919-.53z" clipRule="evenodd" />
           </svg>
@@ -95,7 +95,7 @@ export default function BcvRates() {
   const renderSourceBadge = (source: string) => {
     if (source === 'dolarapi') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm shadow-emerald-500/5">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-440 shadow-sm shadow-emerald-500/5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 animate-pulse"></span>
           DolarAPI (Primaria)
         </span>
@@ -174,7 +174,7 @@ export default function BcvRates() {
               </div>
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-450 font-extrabold text-sm select-none">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-455 font-extrabold text-sm select-none">
                     $
                   </div>
                   <div>
@@ -287,7 +287,7 @@ export default function BcvRates() {
           <QuickConverter bcvData={bcvData} />
 
           {/* Metadata section (Dates & Status) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/40 border border-slate-900 p-4.5 rounded-2xl text-xs text-slate-400">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-955/40 border border-slate-900 p-4.5 rounded-2xl text-xs text-slate-400">
             <div className="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-indigo-400 shrink-0">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />

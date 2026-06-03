@@ -77,10 +77,10 @@ export default function QuickConverter({ bcvData }: QuickConverterProps) {
     const num = Number(val);
     const rateFrom = getRate(from);
     const rateTo = getRate(to);
-    
+
     // Formula: (monto * tasa_origen) / tasa_destino
     const result = (num * rateFrom) / rateTo;
-    
+
     // Decimals based on currency: Bs gets 2 decimals, foreign values get 2 or 4 decimals depending on scale
     const decimals = to === 'VES' ? 2 : result < 1 ? 4 : 2;
     setAmountTo(result.toFixed(decimals));
@@ -95,7 +95,7 @@ export default function QuickConverter({ bcvData }: QuickConverterProps) {
     const num = Number(val);
     const rateFrom = getRate(from);
     const rateTo = getRate(to);
-    
+
     // Formula: (monto * tasa_destino) / tasa_origen
     const result = (num * rateTo) / rateFrom;
     const decimals = from === 'VES' ? 2 : result < 1 ? 4 : 2;
@@ -122,7 +122,7 @@ export default function QuickConverter({ bcvData }: QuickConverterProps) {
   const handleSwap = () => {
     const tempCur = currencyFrom;
     const tempAmount = amountFrom;
-    
+
     setCurrencyFrom(currencyTo);
     setCurrencyTo(tempCur);
     setAmountFrom(amountTo);
@@ -178,7 +178,7 @@ export default function QuickConverter({ bcvData }: QuickConverterProps) {
   const rateFrom = getRate(currencyFrom);
   const rateTo = getRate(currencyTo);
   const conversionRate = rateFrom / rateTo;
-  
+
   const fromLabel = CURRENCIES.find((c) => c.id === currencyFrom)?.label.split(' ')[0] || '';
   const toLabel = CURRENCIES.find((c) => c.id === currencyTo)?.label.split(' ')[0] || '';
   const rateText = `1 ${fromLabel} = ${conversionRate.toFixed(4)} ${toLabel}`;

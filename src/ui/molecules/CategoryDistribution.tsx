@@ -67,7 +67,7 @@ export default function CategoryDistribution({ transactions }: CategoryDistribut
   expenses.forEach((tx) => {
     const catName = tx.category.name;
     const amount = tx.baseAmountUsd; // in cents
-    
+
     totalExpenseUsd += amount;
 
     if (!categoryTotals[catName]) {
@@ -115,7 +115,7 @@ export default function CategoryDistribution({ transactions }: CategoryDistribut
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-        
+
         {/* Left column: SVG Donut Chart */}
         <div className="relative flex items-center justify-center shrink-0 w-[200px] h-[200px]">
           <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90 select-none">
@@ -133,7 +133,7 @@ export default function CategoryDistribution({ transactions }: CategoryDistribut
             {distribution.map((cat, idx) => {
               const sliceLength = (cat.percentage / 100) * circumference;
               const strokeOffset = circumference - ((accumulatedPercentage / 100) * circumference);
-              
+
               // Accumulate percentage for the next slice
               accumulatedPercentage += cat.percentage;
 
@@ -179,7 +179,7 @@ export default function CategoryDistribution({ transactions }: CategoryDistribut
                     {cat.name}
                   </span>
                 </div>
-                
+
                 {/* Total and Percentage */}
                 <div className="flex items-center gap-2 font-bold">
                   <span className="text-slate-300">${formatCents(cat.amountUsd)}</span>

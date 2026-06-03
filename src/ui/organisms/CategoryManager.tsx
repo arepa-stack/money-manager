@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import ConfirmModal from '@/components/ConfirmModal';
+import ConfirmModal from '@/ui/atoms/ConfirmModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ function InlineEdit({
         <button
           onClick={onCancel}
           disabled={saving}
-          className="shrink-0 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all cursor-pointer"
+          className="shrink-0 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-350 rounded-lg transition-all cursor-pointer"
         >
           Cancelar
         </button>
@@ -372,7 +372,7 @@ function CategoryCard({
       category.budgetUsd !== null && category.budgetUsd !== undefined
         ? (category.budgetUsd / 100).toString()
         : ''
-    );
+  );
     setEditingCat(true);
   };
 
@@ -381,12 +381,12 @@ function CategoryCard({
   const showBudget = category.type === 'EXPENSE' && budgetCents > 0;
   const percent = showBudget ? Math.min(Math.round((spendingUsd / budgetCents) * 100), 200) : 0;
   const isOver = percent > 100;
-  
+
   // Clases de color para barra
-  const barColorClass = percent > 100 
-    ? 'bg-rose-500 animate-pulse' 
-    : percent > 80 
-      ? 'bg-amber-500' 
+  const barColorClass = percent > 100
+    ? 'bg-rose-500 animate-pulse'
+    : percent > 80
+      ? 'bg-amber-500'
       : 'bg-emerald-500';
 
   return (
@@ -443,7 +443,7 @@ function CategoryCard({
                   </button>
                   <button
                     onClick={() => setEditingCat(false)}
-                    className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-350 rounded-lg cursor-pointer transition-colors"
+                    className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-350 rounded-lg cursor-pointer transition-colors"
                   >
                     Cancelar
                   </button>
@@ -453,11 +453,11 @@ function CategoryCard({
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
                 <span className="font-semibold text-slate-100 text-sm truncate">{category.name}</span>
-                
+
                 {category.type === 'EXPENSE' && (
                   <span className="text-[10px] text-slate-500 font-bold bg-slate-950/40 px-2 py-0.5 rounded border border-slate-900 ml-1">
-                    {category.budgetUsd 
-                      ? `Pto: $${(category.budgetUsd / 100).toFixed(0)}` 
+                    {category.budgetUsd
+                      ? `Pto: $${(category.budgetUsd / 100).toFixed(0)}`
                       : 'Sin presupuesto'}
                   </span>
                 )}
@@ -505,7 +505,7 @@ function CategoryCard({
               </span>
             </div>
             <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
-              <div 
+              <div
                 className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
                 style={{ width: `${percent}%` }}
               />
@@ -532,7 +532,7 @@ function CategoryCard({
               ))}
             </div>
           ) : (
-            <div className="text-xs text-slate-600 italic pl-4 py-1">
+            <div className="text-xs text-slate-650 italic pl-4 py-1">
               Sin subcategorías
             </div>
           )}
@@ -798,7 +798,7 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
             </span>
             <button
               onClick={() => setShowCreateForm((show) => !show)}
-              className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10"
+              className="text-xs font-bold text-white bg-indigo-650 hover:bg-indigo-500 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10 h-[34px]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -807,7 +807,7 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
             </button>
             <button
               onClick={load}
-              className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-900 hover:border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+              className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-900 hover:border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer h-[34px]"
               title="Recargar"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -832,14 +832,14 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
                 className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none transition-all"
               />
             </div>
-            
+
             <div className="w-full space-y-1.5">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-1">Tipo de Flujo</label>
               <select
                 value={newCatType}
                 onChange={(e) => setNewCatType(e.target.value)}
                 disabled={creatingCat}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-sm text-slate-350 focus:outline-none transition-all cursor-pointer"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-sm text-slate-355 text-slate-350 focus:outline-none transition-all cursor-pointer"
               >
                 <option value="EXPENSE">Gastos (egreso)</option>
                 <option value="INCOME">Ingresos (entrada)</option>
@@ -961,8 +961,8 @@ export default function CategoryManager({ onChange }: CategoryManagerProps) {
           })}
         </div>
       )}
-      
-      <ConfirmModal 
+
+      <ConfirmModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
         message={confirmState.message}

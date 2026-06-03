@@ -11,11 +11,11 @@ interface DateRangePickerProps {
 export default function DateRangePicker({ startDate, endDate, onChange }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Track displayed year/month in the picker
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); // 0-indexed
-  
+
   // Temporary selection state
   const [tempStart, setTempStart] = useState<string | null>(startDate || null);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   // Helper to format displaying range: e.g. "01 May, 2026 - 31 May, 2026"
   const formatRangeText = () => {
     if (!startDate) return 'Selecciona fechas';
-    
+
     const formatDate = (dateStr: string) => {
       const parts = dateStr.split('-').map(Number);
       if (parts.length !== 3) return dateStr;
@@ -62,7 +62,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
     if (!endDate) {
       return `${formatDate(startDate)} - ...`;
     }
-    
+
     return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
 
@@ -70,7 +70,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
-  
+
   const cells: { dateStr: string; dayNum: number; isCurrentMonth: boolean }[] = [];
 
   // Trailing days of previous month
@@ -81,7 +81,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
     cells.push({
       dateStr: formatDateStr(prevYear, prevMonth, d),
       dayNum: d,
-      isCurrentMonth: false
+      isCurrentMonth: false,
     });
   }
 
@@ -90,7 +90,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
     cells.push({
       dateStr: formatDateStr(currentYear, currentMonth, d),
       dayNum: d,
-      isCurrentMonth: true
+      isCurrentMonth: true,
     });
   }
 
@@ -102,7 +102,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
     cells.push({
       dateStr: formatDateStr(nextYear, nextMonth, d),
       dayNum: d,
-      isCurrentMonth: false
+      isCurrentMonth: false,
     });
   }
 
@@ -127,28 +127,28 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   };
 
   const handlePrevYear = () => {
-    setCurrentYear(prev => prev - 1);
+    setCurrentYear((prev) => prev - 1);
   };
 
   const handleNextYear = () => {
-    setCurrentYear(prev => prev + 1);
+    setCurrentYear((prev) => prev + 1);
   };
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
       setCurrentMonth(11);
-      setCurrentYear(prev => prev - 1);
+      setCurrentYear((prev) => prev - 1);
     } else {
-      setCurrentMonth(prev => prev - 1);
+      setCurrentMonth((prev) => prev - 1);
     }
   };
 
   const handleNextMonth = () => {
     if (currentMonth === 11) {
       setCurrentMonth(0);
-      setCurrentYear(prev => prev + 1);
+      setCurrentYear((prev) => prev + 1);
     } else {
-      setCurrentMonth(prev => prev + 1);
+      setCurrentMonth((prev) => prev + 1);
     }
   };
 
@@ -170,8 +170,18 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   };
 
   const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   return (
@@ -182,8 +192,19 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 bg-slate-950 border border-slate-850 hover:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none transition-all cursor-pointer w-full text-left"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-400">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="w-4 h-4 text-slate-400"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"
+          />
         </svg>
         <span className="truncate flex-1">{formatRangeText()}</span>
       </button>
@@ -200,7 +221,14 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
                 title="Año anterior"
                 className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-100 hover:border-slate-700 cursor-pointer transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
                 </svg>
               </button>
@@ -210,7 +238,14 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
                 title="Mes anterior"
                 className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-100 hover:border-slate-700 cursor-pointer transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
               </button>
@@ -225,7 +260,14 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
                 title="Mes siguiente"
                 className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-100 hover:border-slate-700 cursor-pointer transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
@@ -235,7 +277,14 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
                 title="Año siguiente"
                 className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-100 hover:border-slate-700 cursor-pointer transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25l7.5 7.5-7.5 7.5m6-15l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
@@ -260,7 +309,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
               const inRange = isInRange(cell.dateStr);
               const isStart = cell.dateStr === startDate;
               const isEnd = cell.dateStr === endDate;
-              
+
               return (
                 <button
                   key={cell.dateStr}
@@ -278,15 +327,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
                     inRange && !selected
                       ? 'bg-indigo-500/15 text-indigo-300 rounded-none'
                       : ''
-                  } ${
-                    isStart && endDate
-                      ? 'rounded-r-none'
-                      : ''
-                  } ${
-                    isEnd && startDate
-                      ? 'rounded-l-none'
-                      : ''
-                  } hover:bg-indigo-600/25`}
+                  } ${isStart && endDate ? 'rounded-r-none' : ''} ${isEnd && startDate ? 'rounded-l-none' : ''} hover:bg-indigo-600/25`}
                 >
                   {cell.dayNum}
                 </button>

@@ -13,20 +13,20 @@ interface ImportPreviewProps {
   onError: (msg: string) => void;
 }
 
-export default function ImportPreview({ 
-  analysis, 
-  file, 
+export default function ImportPreview({
+  analysis,
+  file,
   provider,
-  onCancel, 
-  onSuccess, 
-  onError 
+  onCancel,
+  onSuccess,
+  onError,
 }: ImportPreviewProps) {
   const [isCommitting, setIsCommitting] = useState(false);
 
   // Mapeo de importHash -> manualTransactionId
   const [reconciliations, setReconciliations] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    analysis.previewTransactions.forEach(t => {
+    analysis.previewTransactions.forEach((t) => {
       if (t.matchCandidate) {
         initial[t.importHash] = t.matchCandidate.id;
       }
@@ -35,7 +35,7 @@ export default function ImportPreview({
   });
 
   const toggleReconciliation = (importHash: string, manualId: string) => {
-    setReconciliations(prev => {
+    setReconciliations((prev) => {
       const next = { ...prev };
       if (next[importHash]) {
         delete next[importHash];
@@ -117,7 +117,7 @@ export default function ImportPreview({
               <p className="text-sm text-slate-500 mt-1 italic">Ninguna cuenta nueva</p>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {analysis.newAccounts.map(acc => (
+                {analysis.newAccounts.map((acc) => (
                   <span key={acc} className="text-xs bg-slate-800 border border-slate-700 text-slate-200 px-2.5 py-1 rounded-full">
                     {acc}
                   </span>
@@ -133,7 +133,7 @@ export default function ImportPreview({
               <p className="text-sm text-slate-500 mt-1 italic">Ninguna categoría nueva</p>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {analysis.newCategories.map(cat => (
+                {analysis.newCategories.map((cat) => (
                   <span key={cat.name} className="text-xs bg-slate-800 border border-slate-700 text-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1">
                     {cat.name}
                     <span className={`w-1.5 h-1.5 rounded-full ${
@@ -152,7 +152,7 @@ export default function ImportPreview({
               <p className="text-sm text-slate-500 mt-1 italic">Ninguna subcategoría nueva</p>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {analysis.newSubcategories.map(sub => (
+                {analysis.newSubcategories.map((sub) => (
                   <span key={`${sub.categoryName}_${sub.name}`} className="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-full">
                     <span className="text-slate-500">{sub.categoryName} &gt; </span>{sub.name}
                   </span>

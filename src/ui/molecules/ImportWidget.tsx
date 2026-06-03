@@ -82,7 +82,7 @@ export default function ImportWidget({ onAnalyzed, onError }: ImportWidgetProps)
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processFile(e.dataTransfer.files[0]);
     }
@@ -112,7 +112,7 @@ export default function ImportWidget({ onAnalyzed, onError }: ImportWidgetProps)
               onClick={() => !provider.disabled && setSelectedProvider(provider.id)}
               disabled={provider.disabled}
               className={`p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all ${
-                provider.disabled 
+                provider.disabled
                   ? 'opacity-40 border-slate-900 bg-slate-900/10 cursor-not-allowed'
                   : selectedProvider === provider.id
                     ? 'border-indigo-500 bg-indigo-500/5 text-slate-100 shadow-md shadow-indigo-500/5 cursor-pointer'
@@ -147,7 +147,7 @@ export default function ImportWidget({ onAnalyzed, onError }: ImportWidgetProps)
           accept=".xls,.xlsx,.csv"
           className="hidden"
         />
-        
+
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}

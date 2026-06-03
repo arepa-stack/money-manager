@@ -140,8 +140,8 @@ export default function TransactionTable({
           <span className="text-xs text-slate-500 ml-1">{t.currency}</span>
           {t.currency.toUpperCase() !== 'USD' && t.baseAmountUsd > 0 && (
             <div className="text-[10px] text-slate-500 block mt-0.5 font-medium" title="Tasa de cambio implícita de registro">
-              {t.currency.toUpperCase() === 'EUR' 
-                ? `Tasa: ${(t.baseAmountUsd / t.amount).toFixed(4)} $/€` 
+              {t.currency.toUpperCase() === 'EUR'
+                ? `Tasa: ${(t.baseAmountUsd / t.amount).toFixed(4)} $/€`
                 : `Tasa: ${(t.amount / t.baseAmountUsd).toFixed(2)} ${t.currency.toUpperCase()}/$`}
             </div>
           )}
@@ -166,7 +166,7 @@ export default function TransactionTable({
             {onDuplicateTransaction && (
               <button
                 onClick={() => onDuplicateTransaction(t)}
-                className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-emerald-450 hover:text-emerald-400 hover:border-slate-700 cursor-pointer transition-all inline-flex items-center"
+                className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-emerald-450 hover:text-emerald-405 hover:text-emerald-400 hover:border-slate-700 cursor-pointer transition-all inline-flex items-center"
                 title="Duplicar transacción"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -233,7 +233,7 @@ export default function TransactionTable({
       <div className="flex items-center gap-2.5 shrink-0">
         <div className="text-right">
           <span className={`font-bold text-sm ${
-            t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-150 text-slate-200'
+            t.transactionType === 'INCOME' ? 'text-emerald-400' : t.transactionType === 'TRANSFER' ? 'text-indigo-400' : 'text-slate-200'
           }`}>
             {t.transactionType === 'EXPENSE' ? '-' : t.transactionType === 'INCOME' ? '+' : ''}
             {formatCents(t.amount)}
@@ -241,8 +241,8 @@ export default function TransactionTable({
           <span className="text-[10px] text-slate-500 block">{t.currency}</span>
           {t.currency.toUpperCase() !== 'USD' && t.baseAmountUsd > 0 && (
             <span className="text-[9px] text-slate-500 block mt-0.5 font-medium">
-              {t.currency.toUpperCase() === 'EUR' 
-                ? `${(t.baseAmountUsd / t.amount).toFixed(4)} $/€` 
+              {t.currency.toUpperCase() === 'EUR'
+                ? `${(t.baseAmountUsd / t.amount).toFixed(4)} $/€`
                 : `${(t.amount / t.baseAmountUsd).toFixed(2)} ${t.currency.toUpperCase()}/$`}
             </span>
           )}
@@ -331,7 +331,7 @@ export default function TransactionTable({
                   {capitalizedWeekday}
                 </span>
               </div>
-              
+
               {/* Tarjetas del día */}
               <div className="space-y-2">
                 {grouped[dateKey].map((t) => renderMobileCard(t))}

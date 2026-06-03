@@ -297,11 +297,11 @@ export default function EditTransactionModal({
   const availableSubcategories = selectedCategory ? selectedCategory.subcategories : [];
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-slate-955/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-slate-950 border border-slate-850 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
@@ -329,7 +329,7 @@ export default function EditTransactionModal({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           {error && (
-            <div className="bg-rose-950/40 border border-rose-500/30 text-rose-350 p-4 rounded-xl text-xs flex items-center gap-2.5">
+            <div className="bg-rose-950/40 border border-rose-500/30 text-rose-355 text-rose-350 p-4 rounded-xl text-xs flex items-center gap-2.5">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4.5 h-4.5 text-rose-550 shrink-0">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
               </svg>
@@ -489,7 +489,7 @@ export default function EditTransactionModal({
 
             {/* Sugerencias de Conversión de Tasa de Cambio */}
             {rates && amount && parseFloat(String(amount)) > 0 && (currency === 'VES' || currency === 'EUR') && (
-              <div className="md:col-span-2 bg-slate-900/30 border border-slate-850/60 p-4 rounded-2xl space-y-2.5 animate-fade-in">
+              <div className="md:col-span-2 bg-slate-900/30 border border-slate-855 border-slate-850/60 p-4 rounded-2xl space-y-2.5 animate-fade-in">
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
@@ -500,7 +500,7 @@ export default function EditTransactionModal({
                   {currency === 'VES' && (
                     <>
                       {rates.usdOficial > 0 && (
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-905 border-slate-900 text-xs">
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-900 text-xs">
                           <div className="min-w-0 pr-2">
                             <span className="text-slate-400 block font-semibold">Tasa Oficial (BCV)</span>
                             <span className="text-[10px] text-slate-500 block mt-0.5">{rates.usdOficial.toFixed(4)} Bs/$</span>
@@ -515,7 +515,7 @@ export default function EditTransactionModal({
                         </div>
                       )}
                       {rates.usdParalelo > 0 && (
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-905 border-slate-900 text-xs">
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-900 text-xs">
                           <div className="min-w-0 pr-2">
                             <span className="text-slate-400 block font-semibold">Tasa Paralela</span>
                             <span className="text-[10px] text-slate-500 block mt-0.5">{rates.usdParalelo.toFixed(4)} Bs/$</span>
@@ -534,7 +534,7 @@ export default function EditTransactionModal({
                   {currency === 'EUR' && (
                     <>
                       {rates.eurOficial > 0 && rates.usdOficial > 0 && (
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-905 border-slate-900 text-xs">
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-900 text-xs">
                           <div className="min-w-0 pr-2">
                             <span className="text-slate-400 block font-semibold">Tasa Oficial (BCV)</span>
                             <span className="text-[10px] text-slate-500 block mt-0.5">{(rates.eurOficial / rates.usdOficial).toFixed(4)} $/€</span>
@@ -549,7 +549,7 @@ export default function EditTransactionModal({
                         </div>
                       )}
                       {rates.eurParalelo > 0 && rates.usdParalelo > 0 && (
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-905 border-slate-900 text-xs">
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/45 border border-slate-900 text-xs">
                           <div className="min-w-0 pr-2">
                             <span className="text-slate-400 block font-semibold">Tasa Paralela</span>
                             <span className="text-[10px] text-slate-500 block mt-0.5">{(rates.eurParalelo / rates.usdParalelo).toFixed(4)} $/€</span>
@@ -647,7 +647,7 @@ export default function EditTransactionModal({
             <button
               type="submit"
               disabled={saving || loadingCats}
-              className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-650 text-white hover:bg-indigo-650 cursor-pointer disabled:opacity-55 transition-all shadow-md shadow-indigo-600/10 flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-650 text-white hover:bg-indigo-600 cursor-pointer disabled:opacity-55 transition-all shadow-md shadow-indigo-600/10 flex items-center gap-1.5"
             >
               {saving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Transacción')}
             </button>

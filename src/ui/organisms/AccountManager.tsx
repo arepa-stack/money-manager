@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import ConfirmModal from '@/components/ConfirmModal';
+import ConfirmModal from '@/ui/atoms/ConfirmModal';
 
 interface Account {
   id: string;
@@ -419,8 +419,8 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
           );
         })}
       </div>
-      
-      <ConfirmModal 
+
+      <ConfirmModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
         message={confirmState.message}

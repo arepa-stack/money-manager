@@ -84,9 +84,9 @@ export default function MonthlyEvolutionChart() {
   const chartHeight = height - paddingTop - paddingBottom;
 
   // Calculate dynamic scales based on visible window (convert cents to decimal for scale)
-  const balances = visibleData.map(d => centsToDecimal(d.balance));
-  const minVal = Math.min(...balances, 0); 
-  const maxVal = Math.max(...balances, 100) * 1.15; 
+  const balances = visibleData.map((d) => centsToDecimal(d.balance));
+  const minVal = Math.min(...balances, 0);
+  const maxVal = Math.max(...balances, 100) * 1.15;
   const valRange = maxVal - minVal === 0 ? 100 : maxVal - minVal;
 
   const getX = (index: number) => {
@@ -99,7 +99,7 @@ export default function MonthlyEvolutionChart() {
   };
 
   // Generate path lines (getY receives decimal values)
-  let linePath = "";
+  let linePath = '';
   if (visibleData.length > 0) {
     linePath = `M ${getX(0)} ${getY(centsToDecimal(visibleData[0].balance))}`;
     for (let i = 1; i < visibleData.length; i++) {
@@ -110,7 +110,7 @@ export default function MonthlyEvolutionChart() {
   // Close the area path for fill gradient (getY receives decimal values)
   const areaPath = visibleData.length > 0
     ? `${linePath} L ${getX(visibleData.length - 1)} ${paddingTop + chartHeight} L ${getX(0)} ${paddingTop + chartHeight} Z`
-    : "";
+    : '';
 
   // Format Month Strings (e.g. "2026-05" -> "May 26")
   const formatMonth = (monthStr: string) => {
@@ -120,11 +120,11 @@ export default function MonthlyEvolutionChart() {
   };
 
   // Calculate Y-axis ticks
-  const yTicks = [0, 0.33, 0.66, 1].map(ratio => minVal + ratio * valRange);
+  const yTicks = [0, 0.33, 0.66, 1].map((ratio) => minVal + ratio * valRange);
 
   return (
     <div className="w-full bg-slate-900/35 border border-slate-900 p-6 rounded-3xl backdrop-blur-md shadow-xl relative overflow-hidden space-y-4">
-      
+
       {/* Header with Navigation Controls */}
       <div className="flex justify-between items-center">
         <div>
@@ -138,7 +138,7 @@ export default function MonthlyEvolutionChart() {
             <button
               type="button"
               onClick={() => {
-                setWindowStartIndex(prev => Math.max(0, prev - 1));
+                setWindowStartIndex((prev) => Math.max(0, prev - 1));
                 setHoveredIndex(null);
               }}
               disabled={windowStartIndex === 0}
@@ -149,7 +149,7 @@ export default function MonthlyEvolutionChart() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
-            
+
             <span className="text-[10px] text-slate-500 font-bold uppercase px-1 tracking-wider">
               {formatMonth(data[windowStartIndex].month)} - {formatMonth(data[Math.min(data.length - 1, windowStartIndex + 5)].month)}
             </span>
@@ -157,7 +157,7 @@ export default function MonthlyEvolutionChart() {
             <button
               type="button"
               onClick={() => {
-                setWindowStartIndex(prev => Math.min(data.length - 6, prev + 1));
+                setWindowStartIndex((prev) => Math.min(data.length - 6, prev + 1));
                 setHoveredIndex(null);
               }}
               disabled={windowStartIndex >= data.length - 6}
@@ -272,7 +272,7 @@ export default function MonthlyEvolutionChart() {
                   cx={x}
                   cy={y}
                   r={isHovered ? 6 : 4}
-                  fill={isHovered ? "rgb(129, 140, 248)" : "rgb(30, 41, 59)"}
+                  fill={isHovered ? 'rgb(129, 140, 248)' : 'rgb(30, 41, 59)'}
                   stroke="rgb(129, 140, 248)"
                   strokeWidth="2.5"
                   className="transition-all duration-150 cursor-pointer"

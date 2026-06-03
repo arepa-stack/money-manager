@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import MonthlyEvolutionChart from './MonthlyEvolutionChart';
+import MonthlyEvolutionChart from '@/ui/molecules/MonthlyEvolutionChart';
 import { formatCents } from '@/lib/moneyUtils';
 
 interface AccountBalance {
@@ -54,7 +54,7 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
 
   const handleReconcile = async () => {
     if (!reconcileAccountId || !reconcileTarget) return;
-    
+
     setIsReconciling(true);
     try {
       const targetBalance = parseFloat(reconcileTarget);
@@ -63,16 +63,16 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
       const res = await fetch('/api/accounts/reconcile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          accountId: reconcileAccountId, 
+        body: JSON.stringify({
+          accountId: reconcileAccountId,
           targetBalance,
           clientDate: new Date().toISOString()
         })
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al conciliar');
-      
+
       setReconcileAccountId(null);
       setReconcileTarget('');
       fetchBalances();
@@ -119,7 +119,7 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      
+
       {/* Header local con Refresh */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
@@ -181,10 +181,10 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
         </div>
       ) : (
         <div className="space-y-6">
-          
+
           {/* Fila superior: Resumen de Patrimonio + Acciones Rápidas */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* Tarjeta de Patrimonio Neto */}
             <div className="lg:col-span-2 bg-gradient-to-r from-slate-900/80 to-indigo-950/20 border border-slate-900 rounded-3xl p-6 flex flex-col justify-between shadow-lg animate-fade-in gap-4">
               <div>
@@ -203,21 +203,21 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
             <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-4.5 flex flex-col justify-between gap-3 backdrop-blur-md shadow-lg animate-fade-in">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Acciones Rápidas</span>
               <div className="grid grid-cols-3 gap-2.5">
-                <button 
+                <button
                   onClick={() => onQuickAction?.('EXPENSE')}
                   className="flex flex-col items-center justify-center p-3 rounded-2xl border border-rose-500/25 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 hover:text-rose-250 transition-all cursor-pointer shadow-sm active:scale-95 select-none"
                 >
                   <span className="text-xl mb-1">💸</span>
                   <span className="text-[9px] font-bold tracking-tight">Gasto</span>
                 </button>
-                <button 
+                <button
                   onClick={() => onQuickAction?.('INCOME')}
                   className="flex flex-col items-center justify-center p-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-400 hover:text-emerald-250 transition-all cursor-pointer shadow-sm active:scale-95 select-none"
                 >
                   <span className="text-xl mb-1">💰</span>
                   <span className="text-[9px] font-bold tracking-tight">Ingreso</span>
                 </button>
-                <button 
+                <button
                   onClick={() => onQuickAction?.('TRANSFER')}
                   className="flex flex-col items-center justify-center p-3 rounded-2xl border border-indigo-500/25 bg-indigo-500/5 hover:bg-indigo-500/15 text-indigo-400 hover:text-indigo-250 transition-all cursor-pointer shadow-sm active:scale-95 select-none"
                 >
@@ -274,7 +274,7 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
                     return (
                       <div key={acc.accountId} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-950/20 border border-slate-900">
                         <div className="flex items-center gap-2 truncate">
-                          <span className={`w-2.5 h-2.5 rounded-full shrink-0`} style={{ backgroundColor: color.stroke }} />
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color.stroke }} />
                           <span className="text-slate-300 font-semibold truncate">{acc.accountName}</span>
                         </div>
                         <span className="font-bold text-slate-400 shrink-0 ml-2">{pct.toFixed(1)}%</span>
@@ -298,14 +298,14 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
               {balances.map((acc) => {
                 const meta = ACCOUNT_META[acc.accountType] || { icon: '💰', label: 'Cuenta', bgClass: 'bg-slate-800 text-slate-400' };
                 const isNegative = acc.balance < 0 && acc.accountType !== 'CREDIT_CARD';
-                
+
                 return (
                   <div
                     key={acc.accountId}
                     onClick={() => onSelectAccount?.(acc.accountId)}
                     className={`bg-slate-900/60 backdrop-blur-md border border-slate-900 p-6 rounded-3xl flex flex-col justify-between shadow-lg transition-all duration-300 group ${
-                      onSelectAccount 
-                        ? 'cursor-pointer hover:border-indigo-500/50 hover:shadow-indigo-500/5 hover:scale-[1.01] active:scale-[0.99]' 
+                      onSelectAccount
+                        ? 'cursor-pointer hover:border-indigo-500/50 hover:shadow-indigo-500/5 hover:scale-[1.01] active:scale-[0.99]'
                         : ''
                     }`}
                   >
@@ -324,8 +324,8 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
                           <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-md shrink-0 ${meta.bgClass}`}>
                             {meta.icon}
                           </div>
-                          
-                          <button 
+
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setReconcileAccountId(acc.accountId);
@@ -337,16 +337,16 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
                           </button>
                         </div>
                       </div>
-                      
+
                       <div>
                         <span className="text-[10px] text-slate-500 block uppercase font-semibold tracking-wider">Saldo Disponible</span>
                         <p className={`text-2xl font-black tracking-tight mt-1 ${
-                          isNegative 
-                            ? 'text-rose-400' 
-                            : acc.accountType === 'CREDIT_CARD' 
-                              ? 'text-slate-300' 
-                              : acc.balance > 0 
-                                ? 'text-emerald-400' 
+                          isNegative
+                            ? 'text-rose-400'
+                            : acc.accountType === 'CREDIT_CARD'
+                              ? 'text-slate-300'
+                              : acc.balance > 0
+                                ? 'text-emerald-400'
                                 : 'text-slate-500'
                         }`}>
                           {acc.balance >= 0 ? '+' : ''}${formatCents(acc.balance)}
@@ -384,30 +384,30 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
             <p className="text-xs text-slate-400 mb-6">
               Ingresa el saldo real actual de tu banco. El sistema insertará un movimiento de ajuste automático.
             </p>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Saldo Real (USD)</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    value={reconcileTarget} 
-                    onChange={(e) => setReconcileTarget(e.target.value)} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-7 pr-4 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={reconcileTarget}
+                    onChange={(e) => setReconcileTarget(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-885 border-slate-800 rounded-xl py-2.5 pl-7 pr-4 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-3 pt-2">
-                <button 
+                <button
                   onClick={() => setReconcileAccountId(null)}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={handleReconcile}
                   disabled={isReconciling}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2"

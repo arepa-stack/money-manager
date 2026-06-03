@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { formatCents } from '@/lib/moneyUtils';
-import TransactionTable from './TransactionTable';
+import TransactionTable from '@/ui/organisms/TransactionTable';
 
 interface Transaction {
   id: string;
@@ -44,10 +44,10 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
   // 1. Parse start and end dates
   const startParts = startDate.split('-').map(Number);
   const endParts = endDate.split('-').map(Number);
-  
+
   const startYear = startParts[0] || new Date().getFullYear();
   const startMonth = (startParts[1] ? startParts[1] - 1 : new Date().getMonth());
-  
+
   const endYear = endParts[0] || new Date().getFullYear();
   const endMonth = (endParts[1] ? endParts[1] - 1 : new Date().getMonth());
 
@@ -57,7 +57,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
   let currMonth = startMonth;
 
   while (
-    currYear < endYear || 
+    currYear < endYear ||
     (currYear === endYear && currMonth <= endMonth)
   ) {
     monthsList.push({ year: currYear, month: currMonth });
@@ -78,7 +78,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
     const today = new Date();
     const tYear = today.getFullYear();
     const tMonth = today.getMonth();
-    
+
     const index = monthsList.findIndex(m => m.year === tYear && m.month === tMonth);
     return index !== -1 ? index : 0;
   };
@@ -144,7 +144,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
     if (!dailyTotals[dateKey]) {
       dailyTotals[dateKey] = { income: 0, expense: 0, transfer: 0, txCount: 0 };
     }
-    
+
     dailyTotals[dateKey].txCount += 1;
     if (t.transactionType === 'INCOME') {
       dailyTotals[dateKey].income += t.baseAmountUsd;
@@ -191,7 +191,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
   const remaining = cells.length <= 35 ? 35 - cells.length : 42 - cells.length;
   const targetCells = cells.length + remaining;
   const finalCellsCount = targetCells < 42 && cells.length > 35 ? 42 : targetCells;
-  
+
   const nextRemaining = finalCellsCount - cells.length;
   for (let d = 1; d <= nextRemaining; d++) {
     const nextMonth = month === 11 ? 0 : month + 1;
@@ -222,7 +222,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
             </p>
           )}
         </div>
-        
+
         {monthsList.length > 1 && (
           <div className="flex items-center gap-2">
             <button
@@ -233,7 +233,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
               }`}
               title="Mes anterior en rango"
             >
-              <svg xmlns="http://www.w3.org/2050/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
@@ -269,7 +269,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
         {cells.map((cell) => {
           const totals = dailyTotals[cell.dateStr];
           const isDateInRange = cell.dateStr >= startDate && cell.dateStr <= endDate;
-          
+
           // Formato especial para día de hoy
           const isToday = getLocalDateString(new Date()) === cell.dateStr;
 
@@ -282,7 +282,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
               onClick={isInteractive ? () => setSelectedDate(cell.dateStr) : undefined}
               className={`min-h-[65px] md:min-h-[110px] p-1.5 md:p-2 rounded-xl md:rounded-2xl border flex flex-col justify-between transition-all relative ${
                 !cell.isCurrentMonth
-                  ? 'bg-slate-950/20 border-slate-950/40 text-slate-600 opacity-40'
+                  ? 'bg-slate-955/20 border-slate-950/40 text-slate-650 opacity-40'
                   : 'bg-slate-950/40 border-slate-900 text-slate-300'
               } ${
                 isToday ? 'ring-2 ring-indigo-500/50 border-indigo-500/50' : ''
@@ -309,7 +309,7 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
                 >
                   {cell.dayNum}
                 </span>
-                
+
                 {totals && totals.txCount > 0 && isDateInRange && (
                   <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-850 px-1 md:px-1.5 py-0.2 rounded-full">
                     {totals.txCount}<span className="hidden sm:inline"> {totals.txCount === 1 ? 'mov' : 'movs'}</span>
@@ -366,11 +366,11 @@ export default function CalendarView({ transactions, startDate, endDate, onEditT
 
       {/* Modal de Detalle Diario */}
       {selectedDate && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-955/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setSelectedDate(null)}
         >
-          <div 
+          <div
             className="bg-slate-950 border border-slate-850 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
