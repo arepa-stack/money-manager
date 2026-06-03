@@ -21,9 +21,10 @@ interface ImportTabProps {
   fetchAccountsList: () => void;
   fetchAvailableNotes: () => void;
   handleClearFilters: () => void;
-  setCurrentTab: (tab: 'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit') => void;
+  setCurrentTab: (tab: 'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit' | 'backup') => void;
   setError: (err: string | null) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  isDatabaseEmpty?: boolean;
 }
 
 export default function ImportTab({
@@ -44,6 +45,7 @@ export default function ImportTab({
   setCurrentTab,
   setError,
   showToast,
+  isDatabaseEmpty = false,
 }: ImportTabProps) {
   
   // Local states for adjustments (success screen)
@@ -132,6 +134,25 @@ export default function ImportTab({
             </p>
           </div>
           <ImportWidget onAnalyzed={handleAnalyzed} onError={setError} />
+          
+          {isDatabaseEmpty && (
+            <div className="max-w-xl mx-auto mt-6 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 text-slate-350 text-xs flex items-start gap-3.5 animate-fade-in">
+              <span className="text-base shrink-0 select-none">💡</span>
+              <div className="space-y-1">
+                <p className="font-bold text-slate-200">¿Ya tienes una copia de seguridad?</p>
+                <p className="text-slate-400 leading-relaxed">
+                  Si configuras tu cuenta de Google Drive en la pestaña de respaldos, podemos buscar y restaurar tu última copia guardada en la nube de forma instantánea.
+                </p>
+                <button
+                  onClick={() => setCurrentTab('backup')}
+                  className="mt-1 text-indigo-400 hover:text-indigo-300 font-bold transition-colors cursor-pointer flex items-center gap-1 group"
+                >
+                  Configurar Google Drive en la pestaña de Respaldos
+                  <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

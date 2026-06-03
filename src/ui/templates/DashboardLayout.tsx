@@ -15,6 +15,7 @@ import AccountsTab from '@/ui/pages/AccountsTab';
 import CategoriesTab from '@/ui/pages/CategoriesTab';
 import BcvTab from '@/ui/pages/BcvTab';
 import AuditTab from '@/ui/pages/AuditTab';
+import BackupTab from '@/ui/pages/BackupTab';
 
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
 import { getLocalDateString } from '@/lib/dateUtils';
@@ -40,7 +41,7 @@ interface Transaction {
 }
 
 export default function DashboardLayout() {
-  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit'>('balances');
+  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit' | 'backup'>('balances');
   const [importState, setImportState] = useState<'upload' | 'preview' | 'success'>('upload');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [initialModalType, setInitialModalType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER' | undefined>(undefined);
@@ -69,6 +70,7 @@ export default function DashboardLayout() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isDatabaseEmpty, setIsDatabaseEmpty] = useState<boolean>(true);
   
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
@@ -145,6 +147,7 @@ export default function DashboardLayout() {
     fetchAccountsList();
     fetchCategoriesList();
     fetchAvailableNotes();
+    checkDatabaseEmpty();
   }, []);
 
   const fetchCategoriesList = async () => {
@@ -204,6 +207,18 @@ export default function DashboardLayout() {
     }
   };
 
+  const checkDatabaseEmpty = async () => {
+    try {
+      const res = await fetch('/api/transactions');
+      if (res.ok) {
+        const data = await res.json();
+        setIsDatabaseEmpty(data.length === 0);
+      }
+    } catch (err) {
+      console.error('Error al verificar si la base de datos está vacía:', err);
+    }
+  };
+
   const fetchTransactions = async () => {
     if (!startDate || !endDate) return;
     setIsLoadingTxs(true);
@@ -250,6 +265,7 @@ export default function DashboardLayout() {
   const handleEditSuccess = () => {
     fetchTransactions();
     fetchAccountsList();
+    checkDatabaseEmpty();
     showToast('Movimiento registrado/actualizado con éxito.', 'success');
   };
 
@@ -345,6 +361,7 @@ export default function DashboardLayout() {
             handleClearFilters();
             fetchTransactions();
             fetchAccountsList();
+            setIsDatabaseEmpty(true);
             setImportState('upload');
             setFile(null);
             setAnalysisResult(null);
@@ -446,6 +463,7 @@ export default function DashboardLayout() {
           <TabButton label="Categorías" isActive={currentTab === 'categories'} onClick={() => setCurrentTab('categories')} />
           <TabButton label="Tasas de Cambio" isActive={currentTab === 'bcv'} onClick={() => setCurrentTab('bcv')} />
           <TabButton label="Auditoría" isActive={currentTab === 'audit'} onClick={() => setCurrentTab('audit')} />
+          <TabButton label="Respaldos" isActive={currentTab === 'backup'} onClick={() => setCurrentTab('backup')} />
         </div>
 
         {/* Tab Contents */}
@@ -512,13 +530,17 @@ export default function DashboardLayout() {
             setExecuteResult={setExecuteResult}
             selectedProvider={selectedProvider}
             setSelectedProvider={setSelectedProvider}
-            fetchTransactions={fetchTransactions}
+            fetchTransactions={() => {
+              fetchTransactions();
+              checkDatabaseEmpty();
+            }}
             fetchAccountsList={fetchAccountsList}
             fetchAvailableNotes={fetchAvailableNotes}
             handleClearFilters={handleClearFilters}
             setCurrentTab={setCurrentTab}
             setError={setError}
             showToast={showToast}
+            isDatabaseEmpty={isDatabaseEmpty}
           />
         )}
 
@@ -543,6 +565,18 @@ export default function DashboardLayout() {
 
         {currentTab === 'audit' && (
           <AuditTab />
+        )}
+
+        {currentTab === 'backup' && (
+          <BackupTab
+            showToast={showToast}
+            setConfirmState={setConfirmState}
+            onRefreshData={() => {
+              fetchTransactions();
+              fetchAccountsList();
+              checkDatabaseEmpty();
+            }}
+          />
         )}
 
         {/* Global Modals */}

@@ -81,3 +81,25 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model AppSetting {
+  key   String @id
+  value String
+
+  @@map("app_settings")
+}
+
+model ExchangeRate {
+  id           String  @id
+  rateDate     String  @map("rate_date")
+  fetchedAt    Int     @map("fetched_at")
+  usdOficial   Float   @map("usd_oficial")
+  usdParalelo  Float?  @map("usd_paralelo")
+  eurOficial   Float   @map("eur_oficial")
+  eurParalelo  Float?  @map("eur_paralelo")
+  source       String
+
+  @@map("exchange_rates")
+}
+
+

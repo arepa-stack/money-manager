@@ -45,3 +45,11 @@ next-env.d.ts
 # SQLite Database
 *.db
 *.db-journal
+
+# Google OAuth Client Secrets and Credentials
+client_secret*.json
+*client_secret*.json
+credentials.json
+*credentials*.json
+google-*.json
+oauth-keys.json

@@ -126,4 +126,16 @@ describe('ImportTab', () => {
       })
     );
   });
+
+  it('should render Google Drive restoration banner when isDatabaseEmpty is true', () => {
+    render(<ImportTab {...mockProps} importState="upload" isDatabaseEmpty={true} />);
+    
+    expect(screen.getByText('¿Ya tienes una copia de seguridad?')).toBeInTheDocument();
+    
+    const configBtn = screen.getByRole('button', { name: /Configurar Google Drive/ });
+    expect(configBtn).toBeInTheDocument();
+    
+    fireEvent.click(configBtn);
+    expect(mockProps.setCurrentTab).toHaveBeenCalledWith('backup');
+  });
 });
