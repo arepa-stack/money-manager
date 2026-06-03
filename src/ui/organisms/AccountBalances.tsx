@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import MonthlyEvolutionChart from '@/ui/molecules/MonthlyEvolutionChart';
+import ConfirmModal from '@/ui/atoms/ConfirmModal';
 import { formatCents } from '@/lib/moneyUtils';
 
 interface AccountBalance {
@@ -29,6 +30,17 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
   const [reconcileAccountId, setReconcileAccountId] = useState<string | null>(null);
   const [reconcileTarget, setReconcileTarget] = useState<string>('');
   const [isReconciling, setIsReconciling] = useState(false);
+
+  // Error modal state
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
 
   const fetchBalances = useCallback(async () => {
     setIsLoading(true);
@@ -77,7 +89,11 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
       setReconcileTarget('');
       fetchBalances();
     } catch (err: any) {
-      alert(err.message);
+      setErrorModal({
+        isOpen: true,
+        title: 'Error de Conciliación',
+        message: err.message || 'No se pudo realizar la conciliación de saldo.',
+      });
     } finally {
       setIsReconciling(false);
     }
@@ -375,6 +391,18 @@ export default function AccountBalances({ onSelectAccount, onQuickAction }: Acco
           </div>
         </div>
       )}
+
+      {/* Modal de Error de Conciliación */}
+      <ConfirmModal
+        isOpen={errorModal.isOpen}
+        title={errorModal.title}
+        message={errorModal.message}
+        onConfirm={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+        onlyConfirm={true}
+        confirmText="Entendido"
+        isDestructive={false}
+      />
 
       {/* Modal de Conciliación */}
       {reconcileAccountId && (
