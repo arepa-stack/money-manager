@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ImportWidget from '@/ui/molecules/ImportWidget';
 import ImportPreview from '@/ui/molecules/ImportPreview';
+import MoneyManagerBackupTutorial from '@/ui/molecules/MoneyManagerBackupTutorial';
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
 import { formatCents } from '@/lib/moneyUtils';
 
@@ -134,7 +135,7 @@ export default function ImportTab({
             </p>
           </div>
 
-          <div className="max-w-xl mx-auto mb-6 p-4 rounded-2xl bg-slate-900/50 border border-slate-800 text-slate-350 text-xs flex flex-col gap-2 animate-fade-in text-left">
+          <div className="max-w-xl mx-auto mb-3 p-4 rounded-2xl bg-slate-900/50 border border-slate-800 text-slate-350 text-xs flex flex-col gap-2 animate-fade-in text-left">
             <h3 className="font-bold text-slate-200 flex items-center gap-1.5">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-indigo-400">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
@@ -147,6 +148,9 @@ export default function ImportTab({
               <li><strong>Transferencias mixtas:</strong> Si pasaste dinero desde una cuenta eliminada hacia una cuenta activa (o viceversa), esto se registrará como un ingreso (o gasto) normal para que la cuenta activa mantenga su saldo matemáticamente perfecto.</li>
             </ul>
           </div>
+
+          {/* Tutorial Acordeón */}
+          <MoneyManagerBackupTutorial />
 
           <ImportWidget onAnalyzed={handleAnalyzed} onError={setError} />
           
