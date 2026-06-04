@@ -110,6 +110,41 @@ export default function BcvRates() {
     );
   };
 
+  const renderTrend = (currentVal: number, prevVal: number | undefined) => {
+    if (currentVal <= 0) return null;
+    const diff = (prevVal === undefined || prevVal <= 0) ? 0 : currentVal - prevVal;
+    const isZero = Math.abs(diff) < 0.0001;
+    const isPositive = diff > 0;
+
+    if (isZero) {
+      return (
+        <span className="inline-flex items-center text-slate-500 ml-1.5" title={prevVal === undefined ? "Tasa inicial registrada" : "Sin cambios"}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+            <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h12.5a.75.75 0 010 1.5H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+          </svg>
+        </span>
+      );
+    }
+
+    if (isPositive) {
+      return (
+        <span className="inline-flex items-center text-emerald-500 ml-1.5" title={`Subió Bs. ${diff.toFixed(4)}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+            <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.57a.75.75 0 01-1.08-1.04l5.25-5.25a.75.75 0 011.08 0l5.25 5.25a.75.75 0 11-1.08 1.04L10.75 5.612V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+          </svg>
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center text-rose-500 ml-1.5" title={`Bajó Bs. ${Math.abs(diff).toFixed(4)}`}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+          <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-3.958a.75.75 0 111.08 1.04l-5.25 5.25a.75.75 0 01-1.08 0l-5.25-5.25a.75.75 0 111.08-1.04l3.96 3.958V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+        </svg>
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Banner and Refresh Action */}
@@ -384,27 +419,51 @@ export default function BcvRates() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-900 text-slate-300">
-                  {bcvData.history.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-900/20 transition-colors">
-                      <td className="p-4 font-semibold text-slate-200">{item.date}</td>
-                      <td className="p-4 text-right font-bold text-emerald-450">Bs. {item.usdOficial.toFixed(4)}</td>
-                      <td className="p-4 text-right font-bold text-amber-500">Bs. {item.usdParalelo > 0 ? item.usdParalelo.toFixed(4) : 'N/A'}</td>
-                      <td className="p-4 text-right font-bold text-indigo-400">Bs. {item.eurOficial.toFixed(4)}</td>
-                      <td className="p-4 text-right font-bold text-violet-400">Bs. {item.eurParalelo > 0 ? item.eurParalelo.toFixed(4) : 'N/A'}</td>
-                      <td className="p-4 text-center">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          item.source === 'dolarapi' 
-                            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
-                            : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
-                        }`}>
-                          {item.source === 'dolarapi' ? 'DolarAPI' : 'BCV (B)'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right text-slate-550 font-medium">
-                        {new Date(item.fetchedAt).toLocaleDateString()} {new Date(item.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                    </tr>
-                  ))}
+                  {bcvData.history.map((item, index) => {
+                    const nextOlderItem = bcvData.history[index + 1];
+
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-900/20 transition-colors">
+                        <td className="p-4 font-semibold text-slate-200">{item.date}</td>
+                        <td className="p-4 text-right font-bold text-emerald-450">
+                          <div className="flex justify-end items-center">
+                            <span>Bs. {item.usdOficial.toFixed(4)}</span>
+                            {renderTrend(item.usdOficial, nextOlderItem?.usdOficial)}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right font-bold text-amber-500">
+                          <div className="flex justify-end items-center">
+                            <span>Bs. {item.usdParalelo > 0 ? item.usdParalelo.toFixed(4) : 'N/A'}</span>
+                            {renderTrend(item.usdParalelo, nextOlderItem?.usdParalelo)}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right font-bold text-indigo-400">
+                          <div className="flex justify-end items-center">
+                            <span>Bs. {item.eurOficial.toFixed(4)}</span>
+                            {renderTrend(item.eurOficial, nextOlderItem?.eurOficial)}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right font-bold text-violet-400">
+                          <div className="flex justify-end items-center">
+                            <span>Bs. {item.eurParalelo > 0 ? item.eurParalelo.toFixed(4) : 'N/A'}</span>
+                            {renderTrend(item.eurParalelo, nextOlderItem?.eurParalelo)}
+                          </div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            item.source === 'dolarapi' 
+                              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
+                              : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+                          }`}>
+                            {item.source === 'dolarapi' ? 'DolarAPI' : 'BCV (B)'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right text-slate-550 font-medium">
+                          {new Date(item.fetchedAt).toLocaleDateString()} {new Date(item.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
