@@ -430,7 +430,8 @@ function CategoryCard({
                     value={tempBudget}
                     onChange={(e) => setTempBudget(e.target.value)}
                     className="w-28 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1 text-sm text-slate-100 outline-none"
-                    placeholder="Pto. mensual"
+                    placeholder="Pto. base mensual"
+                    title="Presupuesto mensual base por defecto"
                   />
                 )}
                 <div className="flex gap-1.5 shrink-0">
@@ -455,10 +456,13 @@ function CategoryCard({
                 <span className="font-semibold text-slate-100 text-sm truncate">{category.name}</span>
 
                 {category.type === 'EXPENSE' && (
-                  <span className="text-[10px] text-slate-500 font-bold bg-slate-950/40 px-2 py-0.5 rounded border border-slate-900 ml-1">
+                  <span
+                    className="text-[10px] text-slate-500 font-bold bg-slate-950/40 px-2 py-0.5 rounded border border-slate-900 ml-1 cursor-help"
+                    title="Presupuesto base por defecto. Se usará automáticamente al iniciar nuevos meses a menos que configures uno personalizado en la pestaña de Presupuestos."
+                  >
                     {category.budgetUsd
-                      ? `Pto: $${(category.budgetUsd / 100).toFixed(0)}`
-                      : 'Sin presupuesto'}
+                      ? `Pto. base: $${(category.budgetUsd / 100).toFixed(0)}`
+                      : 'Sin pto. base'}
                   </span>
                 )}
 

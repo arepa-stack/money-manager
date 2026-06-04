@@ -33,7 +33,7 @@ interface Transaction {
 interface TransactionsTabProps {
   // Data
   transactions: Transaction[];
-  accounts: { id: string; name: string; currency: string; type: string }[];
+  accounts: { id: string; name: string; currency: string; type: string; isArchived?: boolean }[];
   allCategories: { id: string; name: string; type: string }[];
   availableNotes: string[];
   isLoadingTxs: boolean;

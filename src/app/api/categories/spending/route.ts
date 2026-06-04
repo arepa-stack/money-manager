@@ -1,14 +1,26 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const now = new Date();
-    // Primer día del mes actual en UTC/Local según servidor
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const { searchParams } = new URL(request.url);
+    const monthParam = searchParams.get('month'); // Formato: "YYYY-MM"
 
-    // Agrupar gastos por categoría en el mes actual
+    let firstDay: Date;
+    let lastDay: Date;
+
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const [year, month] = monthParam.split('-').map(Number);
+      firstDay = new Date(year, month - 1, 1);
+      lastDay = new Date(year, month, 0, 23, 59, 59, 999);
+    } else {
+      const now = new Date();
+      // Primer día del mes actual en UTC/Local según servidor
+      firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    // Agrupar gastos por categoría en el mes seleccionado
     const spendings = await prisma.transaction.groupBy({
       by: ['categoryId'],
       where: {
@@ -41,3 +53,4 @@ export async function GET() {
     );
   }
 }
+

@@ -6,7 +6,7 @@ import DateRangePicker from '@/ui/atoms/DateRangePicker';
 interface TransactionFiltersProps {
   selectedAccountId: string;
   setSelectedAccountId: (value: string) => void;
-  accounts: { id: string; name: string; currency: string; type: string }[];
+  accounts: { id: string; name: string; currency: string; type: string; isArchived?: boolean }[];
   selectedCategoryId: string;
   setSelectedCategoryId: (value: string) => void;
   allCategories: { id: string; name: string; type: string }[];
@@ -39,7 +39,7 @@ export default function TransactionFilters({
   // Map account options
   const accountOptions = accounts.map((acc) => ({
     value: acc.id,
-    label: acc.name,
+    label: `${acc.name}${acc.isArchived ? ' (Eliminada)' : ''}`,
   }));
 
   // Map category options with localized flow type in label

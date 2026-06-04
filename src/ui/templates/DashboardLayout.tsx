@@ -16,6 +16,7 @@ import CategoriesTab from '@/ui/pages/CategoriesTab';
 import BcvTab from '@/ui/pages/BcvTab';
 import AuditTab from '@/ui/pages/AuditTab';
 import BackupTab from '@/ui/pages/BackupTab';
+import BudgetsTab from '@/ui/pages/BudgetsTab';
 
 import { ImportAnalysisResult, ImportExecuteResult } from '@/lib/domain/types';
 import { getLocalDateString } from '@/lib/dateUtils';
@@ -41,7 +42,7 @@ interface Transaction {
 }
 
 export default function DashboardLayout() {
-  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit' | 'backup'>('balances');
+  const [currentTab, setCurrentTab] = useState<'import' | 'transactions' | 'balances' | 'categories' | 'accounts' | 'bcv' | 'audit' | 'backup' | 'budgets'>('balances');
   const [importState, setImportState] = useState<'upload' | 'preview' | 'success'>('upload');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [initialModalType, setInitialModalType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER' | undefined>(undefined);
@@ -50,7 +51,7 @@ export default function DashboardLayout() {
   const [analysisResult, setAnalysisResult] = useState<ImportAnalysisResult | null>(null);
   const [executeResult, setExecuteResult] = useState<ImportExecuteResult | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<{ id: string; name: string; currency: string; type: string }[]>([]);
+  const [accounts, setAccounts] = useState<{ id: string; name: string; currency: string; type: string; isArchived?: boolean }[]>([]);
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [allCategories, setAllCategories] = useState<{ id: string; name: string; type: string }[]>([]);
   const [hasLoadedDefaultTab, setHasLoadedDefaultTab] = useState(false);
@@ -171,7 +172,8 @@ export default function DashboardLayout() {
           id: a.accountId,
           name: a.accountName,
           currency: a.accountCurrency,
-          type: a.accountType
+          type: a.accountType,
+          isArchived: a.isArchived
         })));
         
         // Auto-switch default active tab on initial mount
@@ -458,6 +460,7 @@ export default function DashboardLayout() {
         <div className="flex border-b border-slate-900 gap-6 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
           <TabButton label="Saldos y Evolución" isActive={currentTab === 'balances'} onClick={() => setCurrentTab('balances')} />
           <TabButton label="Historial de Movimientos" isActive={currentTab === 'transactions'} onClick={() => setCurrentTab('transactions')} />
+          <TabButton label="Presupuestos" isActive={currentTab === 'budgets'} onClick={() => setCurrentTab('budgets')} />
           <TabButton label="Consola de Importación" isActive={currentTab === 'import'} onClick={() => setCurrentTab('import')} />
           <TabButton label="Cuentas" isActive={currentTab === 'accounts'} onClick={() => setCurrentTab('accounts')} />
           <TabButton label="Categorías" isActive={currentTab === 'categories'} onClick={() => setCurrentTab('categories')} />
@@ -577,6 +580,10 @@ export default function DashboardLayout() {
               checkDatabaseEmpty();
             }}
           />
+        )}
+
+        {currentTab === 'budgets' && (
+          <BudgetsTab />
         )}
 
         {/* Global Modals */}

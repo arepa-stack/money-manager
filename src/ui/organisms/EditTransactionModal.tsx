@@ -33,7 +33,7 @@ interface Transaction {
 
 interface EditTransactionModalProps {
   transaction?: Transaction; // Opcional para soportar creación
-  accounts: { id: string; name: string; currency?: string; type?: string }[];
+  accounts: { id: string; name: string; currency?: string; type?: string; isArchived?: boolean }[];
   onClose: () => void;
   onSuccess: () => void;
   initialType?: 'INCOME' | 'EXPENSE' | 'TRANSFER';
@@ -80,9 +80,15 @@ export default function EditTransactionModal({
   const [transactionDate, setTransactionDate] = useState(
     transaction && !isDuplicate ? formatToDatetimeLocal(transaction.transactionDate) : getNowDatetimeLocal()
   );
-  const [accountId, setAccountId] = useState(
-    transaction ? transaction.accountId : (accounts[0]?.id || '')
-  );
+  const [accountId, setAccountId] = useState(() => {
+    if (transaction && !isDuplicate) return transaction.accountId;
+    if (transaction && isDuplicate) {
+      const originalAcc = accounts.find(a => a.id === transaction.accountId);
+      if (originalAcc && !originalAcc.isArchived) return transaction.accountId;
+    }
+    const firstActive = accounts.find(a => !a.isArchived);
+    return firstActive ? firstActive.id : (accounts[0]?.id || '');
+  });
   const [transactionType, setTransactionType] = useState<string>(
     transaction ? transaction.transactionType : (initialType || 'EXPENSE')
   );
@@ -202,7 +208,8 @@ export default function EditTransactionModal({
   // Sync default account if accounts load after init
   useEffect(() => {
     if (!accountId && accounts.length > 0) {
-      setAccountId(accounts[0].id);
+      const activeAcc = accounts.find((a) => !a.isArchived);
+      setAccountId(activeAcc ? activeAcc.id : accounts[0].id);
     }
   }, [accountId, accounts]);
 
@@ -224,7 +231,7 @@ export default function EditTransactionModal({
       if (transferCat) setCategoryId(transferCat.id);
       setSubcategoryId('');
       if (!destinationAccountId || destinationAccountId === accountId) {
-        const defaultDest = accounts.find((a) => a.id !== accountId);
+        const defaultDest = accounts.find((a) => a.id !== accountId && !a.isArchived);
         setDestinationAccountId(defaultDest ? defaultDest.id : '');
       }
     } else {
@@ -239,7 +246,7 @@ export default function EditTransactionModal({
   const handleAccountChange = (newAccountId: string) => {
     setAccountId(newAccountId);
     if (transactionType === 'TRANSFER' && destinationAccountId === newAccountId) {
-      const altDest = accounts.find((a) => a.id !== newAccountId);
+      const altDest = accounts.find((a) => a.id !== newAccountId && !a.isArchived);
       setDestinationAccountId(altDest ? altDest.id : '');
     }
   };
@@ -419,9 +426,14 @@ export default function EditTransactionModal({
                 className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all outline-none"
               >
                 {accounts.length === 0 && <option value="">Crear una cuenta primero</option>}
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
+                {accounts
+                  .filter((a) => !a.isArchived || a.id === accountId)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                      {a.isArchived ? ' (Eliminada)' : ''}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -436,9 +448,14 @@ export default function EditTransactionModal({
                   className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-all outline-none"
                 >
                   <option value="" disabled>Selecciona destino</option>
-                  {accounts.filter((a) => a.id !== accountId).map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
+                  {accounts
+                    .filter((a) => a.id !== accountId && (!a.isArchived || a.id === destinationAccountId))
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                        {a.isArchived ? ' (Eliminada)' : ''}
+                      </option>
+                    ))}
                 </select>
               </div>
             )}

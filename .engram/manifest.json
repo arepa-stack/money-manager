@@ -240,6 +240,38 @@
       "sessions": 0,
       "memories": 3,
       "prompts": 0
+    },
+    {
+      "id": "15c2bb27",
+      "created_by": "User",
+      "created_at": "2026-06-04T22:50:32Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "47fff9aa",
+      "created_by": "User",
+      "created_at": "2026-06-04T22:52:35Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "b122d09a",
+      "created_by": "User",
+      "created_at": "2026-06-04T23:01:29Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "dcee9727",
+      "created_by": "User",
+      "created_at": "2026-06-04T23:03:07Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }

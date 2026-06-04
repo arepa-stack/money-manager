@@ -53,3 +53,5 @@ credentials.json
 *credentials*.json
 google-*.json
 oauth-keys.json
+
+money_android.sqlite

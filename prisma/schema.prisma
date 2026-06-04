@@ -24,12 +24,13 @@ model Account {
 }
 
 model Category {
-  id            String        @id @default(uuid())
-  name          String        @unique
+  id            String          @id @default(uuid())
+  name          String          @unique
   type          String // 'INCOME', 'EXPENSE', 'TRANSFER'
-  budgetUsd     Int?          @map("budget_usd")
+  budgetUsd     Int?            @map("budget_usd")
   subcategories Subcategory[]
   transactions  Transaction[]
+  monthlyBudgets MonthlyBudget[]
 
   @@map("categories")
 }
@@ -104,4 +105,15 @@ model ExchangeRate {
   @@map("exchange_rates")
 }
 
+model MonthlyBudget {
+  id         String   @id @default(uuid())
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  yearMonth  String   @map("year_month") // Formato: "YYYY-MM"
+  budgetUsd  Int      @map("budget_usd") // En centavos
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
+  @@unique([categoryId, yearMonth])
+  @@map("monthly_budgets")
+}
