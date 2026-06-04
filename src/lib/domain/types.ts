@@ -12,6 +12,9 @@ export interface ParsedTransaction {
   note?: string | null;
   description?: string | null;
   importHash: string; // SHA-256 for idempotency
+  isOpeningBalance?: boolean;
+  excludeFromTotals?: boolean; // true si pertenece a una cuenta eliminada/oculta en la app origen
+  accountIsArchived?: boolean; // true si la cuenta origen está marcada como eliminada/oculta
 }
 
 export interface ImportAnalysisResult {
@@ -33,6 +36,8 @@ export interface ImportAnalysisResult {
     note: string | null;
     isDuplicate: boolean;
     importHash: string;
+    isOpeningBalance?: boolean;
+    excludeFromTotals?: boolean;
     matchCandidate?: {
       id: string;
       date: string;

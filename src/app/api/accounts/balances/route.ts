@@ -6,12 +6,14 @@ export async function GET(request: NextRequest) {
     const accounts = await prisma.account.findMany({
       include: {
         transactions: {
+          where: { excludeFromTotals: false },
           select: {
             transactionType: true,
             baseAmountUsd: true,
           },
         },
         receivedTransfers: {
+          where: { excludeFromTotals: false },
           select: {
             transactionType: true,
             baseAmountUsd: true,
@@ -56,6 +58,7 @@ export async function GET(request: NextRequest) {
         accountName: account.name,
         accountType: account.type,
         accountCurrency: account.currency,
+        isArchived: account.isArchived,
         balance,
         totalIncome,
         totalExpense,

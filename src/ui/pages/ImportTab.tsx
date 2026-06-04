@@ -130,9 +130,24 @@ export default function ImportTab({
           <div className="text-center max-w-xl mx-auto space-y-2 mb-4">
             <h2 className="text-xl font-bold text-slate-200">Importar Extracto de Money Manager</h2>
             <p className="text-slate-400 text-sm">
-              Carga el archivo Excel `.xls` o `.xlsx` exportado por Money Manager. El motor identificará duplicados e ingresará al vuelo cuentas y categorías nuevas.
+              Carga el archivo Excel `.xls` o `.xlsx` exportado por Money Manager, o un archivo SQLite (`.sqlite`). El motor identificará duplicados e ingresará al vuelo cuentas y categorías nuevas.
             </p>
           </div>
+
+          <div className="max-w-xl mx-auto mb-6 p-4 rounded-2xl bg-slate-900/50 border border-slate-800 text-slate-350 text-xs flex flex-col gap-2 animate-fade-in text-left">
+            <h3 className="font-bold text-slate-200 flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-indigo-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+              </svg>
+              Cuentas eliminadas y totales
+            </h3>
+            <ul className="list-disc pl-5 space-y-1.5 text-slate-400 mt-1">
+              <li>Las cuentas que eliminaste en la app original se importarán en estado <strong>Eliminada</strong> (solo lectura).</li>
+              <li>Los gastos o ingresos que hiciste exclusivamente en esas cuentas se marcan como <strong>Excluidos</strong> y no afectan tu patrimonio neto global.</li>
+              <li><strong>Transferencias mixtas:</strong> Si pasaste dinero desde una cuenta eliminada hacia una cuenta activa (o viceversa), esto se registrará como un ingreso (o gasto) normal para que la cuenta activa mantenga su saldo matemáticamente perfecto.</li>
+            </ul>
+          </div>
+
           <ImportWidget onAnalyzed={handleAnalyzed} onError={setError} />
           
           {isDatabaseEmpty && (

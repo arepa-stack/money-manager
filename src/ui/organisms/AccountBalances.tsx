@@ -10,6 +10,7 @@ interface AccountBalance {
   accountName: string;
   accountType: string;
   accountCurrency: string;
+  isArchived: boolean;
   balance: number;
   totalIncome: number;
   totalExpense: number;
@@ -102,7 +103,11 @@ export default function AccountBalances({ onSelectAccount, onQuickAction, showTo
   };
 
   // Cuentas de tipo pasivo (tarjeta de crédito) restan del patrimonio neto
-  const grandTotal = balances.reduce((acc, curr) => {
+  // Las cuentas archivadas se excluyen del cálculo de patrimonio
+  const activeBalances = balances.filter(b => !b.isArchived);
+  const archivedCount = balances.filter(b => b.isArchived).length;
+
+  const grandTotal = activeBalances.reduce((acc, curr) => {
     if (curr.accountType === 'CREDIT_CARD') {
       return acc - curr.balance;
     }
@@ -110,7 +115,7 @@ export default function AccountBalances({ onSelectAccount, onQuickAction, showTo
   }, 0);
 
   // Gráfico de distribución patrimonial (activos activos con saldo > 0)
-  const activeAssets = balances.filter(b => b.accountType !== 'CREDIT_CARD' && b.balance > 0);
+  const activeAssets = activeBalances.filter(b => b.accountType !== 'CREDIT_CARD' && b.balance > 0);
   const totalAssets = activeAssets.reduce((sum, b) => sum + b.balance, 0);
 
   const COLOR_PALETTE = [
@@ -215,6 +220,14 @@ export default function AccountBalances({ onSelectAccount, onQuickAction, showTo
                 </p>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">USD</span>
               </div>
+              {archivedCount > 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-600 border-t border-slate-800/50 pt-2 mt-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                  </svg>
+                  <span>{archivedCount} cuenta{archivedCount > 1 ? 's eliminadas excluidas' : ' eliminada excluida'} del total</span>
+                </div>
+              )}
             </div>
 
             {/* Acciones Rápidas */}
@@ -313,7 +326,7 @@ export default function AccountBalances({ onSelectAccount, onQuickAction, showTo
               Desglose por Cuenta
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {balances.map((acc) => {
+              {activeBalances.map((acc) => {
                 const meta = ACCOUNT_META[acc.accountType] || { icon: '💰', label: 'Cuenta', bgClass: 'bg-slate-800 text-slate-400' };
                 const isNegative = acc.balance < 0 && acc.accountType !== 'CREDIT_CARD';
 

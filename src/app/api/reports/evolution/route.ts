@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
 
     // Retrieve all transactions sorted chronologically
     const transactions = await prisma.transaction.findMany({
+      where: { excludeFromTotals: false },
       orderBy: { transactionDate: 'asc' },
       select: {
         transactionDate: true,

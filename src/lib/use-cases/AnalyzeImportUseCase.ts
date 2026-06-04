@@ -171,6 +171,8 @@ export async function analyzeImport(fileBuffer: Buffer, providerName: string = '
       note: t.note || null,
       isDuplicate,
       importHash: t.importHash,
+      isOpeningBalance: t.isOpeningBalance || false,
+      excludeFromTotals: t.excludeFromTotals || false,
       matchCandidate // Nuevo campo para la UI de importación
     };
   });

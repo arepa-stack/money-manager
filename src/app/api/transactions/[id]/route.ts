@@ -29,6 +29,15 @@ export async function PUT(
       return NextResponse.json({ error: 'Faltan parámetros requeridos o son inválidos' }, { status: 400 });
     }
 
+    // 2. Verificar que la transacción no pertenezca a una cuenta eliminada/archivada
+    const existingTx = await prisma.transaction.findUnique({
+      where: { id },
+      select: { excludeFromTotals: true }
+    });
+    if (existingTx?.excludeFromTotals) {
+      return NextResponse.json({ error: 'No se puede modificar una transacción de una cuenta eliminada' }, { status: 403 });
+    }
+
     let finalCategoryId = categoryId;
     let finalDestinationAccountId = destinationAccountId;
 
@@ -132,6 +141,10 @@ export async function DELETE(
       where: { id },
       include: { account: { select: { name: true } }, category: { select: { name: true } } },
     });
+
+    if (txToDelete?.excludeFromTotals) {
+      return NextResponse.json({ error: 'No se puede eliminar una transacción de una cuenta eliminada' }, { status: 403 });
+    }
 
     await prisma.transaction.delete({
       where: { id }

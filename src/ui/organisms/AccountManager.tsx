@@ -8,6 +8,7 @@ interface Account {
   name: string;
   type: string;
   currency: string;
+  isArchived: boolean;
   createdAt: string;
 }
 
@@ -47,6 +48,9 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
   const [editCurrency, setEditCurrency] = useState('USD');
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+
+  // Archived section toggle
+  const [showArchived, setShowArchived] = useState(false);
 
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
@@ -212,6 +216,9 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
     setUpdateError(null);
   };
 
+  const activeAccounts = accounts.filter(a => !a.isArchived);
+  const archivedAccounts = accounts.filter(a => a.isArchived);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header and Form Card */}
@@ -288,7 +295,7 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
         {createError && <p className="text-xs text-rose-400 mt-2 pl-1">{createError}</p>}
       </div>
 
-      {/* Accounts List */}
+      {/* Active Accounts List */}
       <div className="space-y-2">
         {loading && (
           <div className="py-12 flex flex-col items-center justify-center space-y-2">
@@ -303,13 +310,13 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
           </div>
         )}
 
-        {!loading && !error && accounts.length === 0 && (
+        {!loading && !error && activeAccounts.length === 0 && (
           <div className="py-12 text-center text-slate-500 text-sm italic">
-            No tienes ninguna cuenta registrada. Crea una arriba.
+            No tienes ninguna cuenta activa registrada. Crea una arriba.
           </div>
         )}
 
-        {!loading && !error && accounts.map((acc) => {
+        {!loading && !error && activeAccounts.map((acc) => {
           const typeMeta = ACCOUNT_TYPES.find(t => t.id === acc.type) || ACCOUNT_TYPES[0];
           const currMeta = CURRENCIES.find(c => c.id === acc.currency) || CURRENCIES[0];
 
@@ -419,6 +426,99 @@ export default function AccountManager({ onChange }: AccountManagerProps) {
           );
         })}
       </div>
+
+      {/* Archived Accounts Section */}
+      {!loading && !error && archivedAccounts.length > 0 && (
+        <div className="space-y-3">
+          {/* Toggle Header */}
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-dashed border-slate-800 hover:border-slate-700 bg-slate-950/30 hover:bg-slate-950/50 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-slate-500 text-base">🗂️</span>
+              <div className="text-left">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Cuentas Eliminadas
+                </span>
+                <span className="ml-2 text-[10px] font-semibold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+                  {archivedAccounts.length}
+                </span>
+              </div>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${showArchived ? 'rotate-180' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          {showArchived && (
+            <div className="space-y-2 animate-fade-in">
+              {/* Explanation Banner */}
+              <div className="flex items-start gap-3 bg-amber-950/20 border border-amber-500/20 rounded-2xl px-4 py-3">
+                <span className="text-amber-500 text-lg shrink-0 mt-0.5">⚠️</span>
+                <p className="text-xs text-amber-300/80 leading-relaxed">
+                  Estas cuentas existían en tu aplicación Money Manager pero fueron marcadas como eliminadas.
+                  Se importaron para preservar el historial de transacciones, pero{' '}
+                  <strong className="text-amber-200">no afectan tu saldo total</strong> y sus transacciones son de{' '}
+                  <strong className="text-amber-200">solo lectura</strong>. No es posible editarlas ni eliminarlas.
+                </p>
+              </div>
+
+              {archivedAccounts.map((acc) => {
+                const typeMeta = ACCOUNT_TYPES.find(t => t.id === acc.type) || ACCOUNT_TYPES[0];
+                const currMeta = CURRENCIES.find(c => c.id === acc.currency) || CURRENCIES[0];
+
+                return (
+                  <div
+                    key={acc.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-950/30 border border-slate-800/50 rounded-2xl px-5 py-4 opacity-60"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Greyed out icon with archive overlay */}
+                      <div className="relative w-10 h-10 shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-slate-800/60 flex items-center justify-center border border-slate-700/40 text-slate-600 text-lg grayscale">
+                          {typeMeta.icon}
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-slate-700 rounded-full flex items-center justify-center border border-slate-600">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-2.5 h-2.5 text-slate-400">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-slate-400 text-sm line-through decoration-slate-600">{acc.name}</span>
+                          <span className="text-[9px] font-bold bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-widest border border-slate-700/50">
+                            Eliminada
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider block mt-0.5">
+                          {typeMeta.label} • {currMeta.name} ({currMeta.symbol}) • Solo lectura
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Lock icon — no actions */}
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-700">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={confirmState.isOpen}

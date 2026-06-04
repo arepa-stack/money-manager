@@ -29,6 +29,15 @@ export async function PUT(
       );
     }
 
+    // No se puede editar una cuenta archivada (importada desde cuenta eliminada)
+    const accountToEdit = await prisma.account.findUnique({ where: { id }, select: { isArchived: true } });
+    if (accountToEdit?.isArchived) {
+      return NextResponse.json(
+        { error: 'No se puede modificar una cuenta archivada. Es un registro histórico de solo lectura.' },
+        { status: 403 }
+      );
+    }
+
     const updatedAccount = await prisma.account.update({
       where: { id },
       data: {
@@ -77,6 +86,15 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'No se puede eliminar la cuenta porque posee transacciones asociadas' },
         { status: 400 }
+      );
+    }
+
+    // No se puede eliminar una cuenta archivada
+    const accountToCheck = await prisma.account.findUnique({ where: { id }, select: { isArchived: true } });
+    if (accountToCheck?.isArchived) {
+      return NextResponse.json(
+        { error: 'No se puede eliminar una cuenta archivada. Es un registro histórico de solo lectura.' },
+        { status: 403 }
       );
     }
 

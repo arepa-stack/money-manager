@@ -13,6 +13,7 @@ export async function GET() {
       by: ['categoryId'],
       where: {
         transactionType: 'EXPENSE',
+        excludeFromTotals: false,
         transactionDate: {
           gte: firstDay,
           lte: lastDay,

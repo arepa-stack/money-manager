@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       where: { id: accountId },
       include: {
         transactions: {
+          where: { excludeFromTotals: false },
           select: {
             id: true,
             transactionType: true,
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
           }
         },
         receivedTransfers: {
+          where: { excludeFromTotals: false },
           select: {
             id: true,
             transactionType: true,

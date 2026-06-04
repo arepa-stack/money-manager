@@ -48,8 +48,24 @@ export async function executeImport(
     const missingAccNames = accountNames.filter(name => !existingAccNames.has(name));
     
     if (missingAccNames.length > 0) {
+      // Determinar cuáles cuentas nuevas son archivadas (todas sus transacciones tienen accountIsArchived=true)
+      const archivedAccountNames = new Set(
+        parsedTransactions
+          .filter(t => t.accountIsArchived)
+          .map(t => t.accountName)
+      );
+      // Una cuenta se considera activa si tiene al menos una transacción no archivada
+      const activeAccountNames = new Set(
+        parsedTransactions
+          .filter(t => !t.accountIsArchived)
+          .map(t => t.accountName)
+      );
+
       await tx.account.createMany({
-        data: missingAccNames.map(name => ({ name }))
+        data: missingAccNames.map(name => ({
+          name,
+          isArchived: archivedAccountNames.has(name) && !activeAccountNames.has(name)
+        }))
       });
     }
 
@@ -208,7 +224,9 @@ export async function executeImport(
         baseAmountUsd: t.baseAmountUsd,
         note: t.note || null,
         description: t.description || null,
-        destinationAccountId
+        destinationAccountId,
+        isOpeningBalance: t.isOpeningBalance ?? false,
+        excludeFromTotals: t.excludeFromTotals ?? false
       };
     });
 
@@ -224,12 +242,14 @@ export async function executeImport(
     const dbAccounts = await tx.account.findMany({
       include: {
         transactions: {
+          where: { excludeFromTotals: false },
           select: {
             transactionType: true,
             baseAmountUsd: true,
           },
         },
         receivedTransfers: {
+          where: { excludeFromTotals: false },
           select: {
             transactionType: true,
             baseAmountUsd: true,

@@ -101,7 +101,7 @@ export function parseMoneyManagerExcel(buffer: Buffer): ParsedTransaction[] {
     category: normalizedHeaders.indexOf('categoría'),
     subcategory: normalizedHeaders.indexOf('subcategorías'),
     note: normalizedHeaders.indexOf('nota'),
-    usd: normalizedHeaders.indexOf('usd'),
+    usd: normalizedHeaders.findIndex(h => h.includes('usd')),
     type: normalizedHeaders.indexOf('ingreso/gasto'),
     description: normalizedHeaders.indexOf('descripción'),
     amount: normalizedHeaders.indexOf('importe'),
@@ -142,15 +142,6 @@ export function parseMoneyManagerExcel(buffer: Buffer): ParsedTransaction[] {
         throw new Error(`Nombre de cuenta vacío en la fila ${i + 1}`);
       }
 
-      const categoryName = String(row[colMap.category] || '').trim();
-      if (!categoryName) {
-        throw new Error(`Categoría vacía en la fila ${i + 1}`);
-      }
-
-      const subcategoryName = colMap.subcategory !== -1 && row[colMap.subcategory] 
-        ? String(row[colMap.subcategory]).trim() 
-        : null;
-
       const rawType = String(row[colMap.type] || '').trim().toLowerCase();
       let type: TransactionType = 'EXPENSE';
       if (rawType.includes('ingreso')) {
@@ -168,17 +159,24 @@ export function parseMoneyManagerExcel(buffer: Buffer): ParsedTransaction[] {
         type = 'EXPENSE';
       }
 
-      // Keep raw float values for hash (idempotency: same source file always generates same hash)
-      const rawAmount = parseAmount(row[colMap.amount]);
-      const currency = String(row[colMap.currency] || 'USD').trim().toUpperCase();
+      const categoryName = String(row[colMap.category] || '').trim();
+      if (!categoryName) {
+        throw new Error(`Categoría vacía en la fila ${i + 1}`);
+      }
 
-      // Read USD value if present, fallback to parsed amount if currency is USD, or default 0
+      const subcategoryName = colMap.subcategory !== -1 && row[colMap.subcategory] 
+        ? String(row[colMap.subcategory]).trim() 
+        : null;
+
+      // Read USD value if present, default to 0
       let rawBaseAmountUsd = 0;
       if (colMap.usd !== -1 && row[colMap.usd] !== undefined && row[colMap.usd] !== null && row[colMap.usd] !== '') {
         rawBaseAmountUsd = parseAmount(row[colMap.usd]);
-      } else if (currency === 'USD') {
-        rawBaseAmountUsd = rawAmount;
       }
+
+      // Force currency to USD and use the converted USD amount as the main transaction amount for import
+      const rawAmountInUsd = rawBaseAmountUsd;
+      const currency = 'USD';
 
       const note = colMap.note !== -1 && row[colMap.note] !== undefined && row[colMap.note] !== null
         ? String(row[colMap.note]).trim()
@@ -188,19 +186,19 @@ export function parseMoneyManagerExcel(buffer: Buffer): ParsedTransaction[] {
         ? String(row[colMap.description]).trim()
         : null;
 
-      // Hash uses the original float value from source (ensures stable idempotency across re-imports)
+      // Hash uses the calculated USD float value and currency 'USD' (ensures stable idempotency across re-imports)
       const importHash = generateImportHash({
         date,
         accountName,
         categoryName,
-        amount: rawAmount,
+        amount: rawAmountInUsd,
         currency,
         note
       });
 
       // Convert to integer cents (Money Pattern) AFTER hash generation
-      const amount = Math.round(rawAmount * 100);
-      const baseAmountUsd = Math.round(rawBaseAmountUsd * 100);
+      const amount = Math.round(rawAmountInUsd * 100);
+      const baseAmountUsd = amount;
 
       if (seenHashes.has(importHash)) {
         continue;
